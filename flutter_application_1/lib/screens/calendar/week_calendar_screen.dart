@@ -1,0 +1,271 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/calendar/month_or_week.dart';
+
+class WeekCalendarScreen extends StatefulWidget {
+  final VoidCallback onSwitchToMonth;
+
+  const WeekCalendarScreen({
+    super.key,
+    required this.onSwitchToMonth,
+  });
+
+  @override
+  State<WeekCalendarScreen> createState() => _WeekCalendarScreenState();
+}
+
+class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
+  late DateTime _weekStart;
+  final Map<DateTime, Map<String, String>?> _shifts = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _weekStart = _getWeekStart(DateTime.now());
+    _generateDemoData();
+  }
+
+  DateTime _getWeekStart(DateTime date) {
+    return date.subtract(Duration(days: date.weekday - 1));
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  void _generateDemoData() {
+    _shifts.clear();
+    final days = List.generate(7, (i) => _dateOnly(_weekStart.add(Duration(days: i))));
+
+    _shifts[days[0]] = {'time': '18:00 – 02:00'};
+    _shifts[days[1]] = null;
+    _shifts[days[2]] = {'time': '16:00 – 00:00'};
+    _shifts[days[3]] = null;
+    _shifts[days[4]] = {'time': '17:00 – 01:00'};
+    _shifts[days[5]] = null;
+    _shifts[days[6]] = {'time': '15:00 – 23:00'};
+  }
+
+  void _changeWeek(int offset) {
+    setState(() {
+      _weekStart = _weekStart.add(Duration(days: 7 * offset));
+      _generateDemoData();
+    });
+  }
+
+  String _formatWeekRange() {
+    final end = _weekStart.add(const Duration(days: 6));
+    const months = [
+      '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+
+    if (_weekStart.month == end.month) {
+      return '${_weekStart.day} – ${end.day} ${months[_weekStart.month]} ${end.year}';
+    }
+    return '${_weekStart.day} ${months[_weekStart.month]} – ${end.day} ${months[end.month]} ${end.year}';
+  }
+
+  String _dayName(int weekday) {
+    const names = [
+      '', 'Понедельник', 'Вторник', 'Среда', 'Четверг',
+      'Пятница', 'Суббота', 'Воскресенье'
+    ];
+    return names[weekday];
+  }
+
+  String _formatDay(DateTime date) {
+    const months = [
+      '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    return '${date.day} ${months[date.month]}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const coral = Color(0xFFFF6B6B);
+    const bgColor = Color(0xFFFFF8F5);
+    final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Text(
+                'Мои смены',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: CalendarChange(
+                isMonthView: false,
+                onViewChanged: (isMonth) {
+                  if (isMonth) widget.onSwitchToMonth();
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => _changeWeek(-1),
+                    icon: const Icon(Icons.chevron_left_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      shape: const CircleBorder(),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, size: 16, color: coral),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatWeekRange(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => _changeWeek(1),
+                    icon: const Icon(Icons.chevron_right_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      shape: const CircleBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                itemCount: 7,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final day = days[index];
+                  final shift = _shifts[_dateOnly(day)];
+                  final isShift = shift != null;
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isShift ? coral : const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _dayName(day.weekday),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _formatDay(day),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isShift) ...[
+                          const Icon(Icons.access_time_rounded, size: 16, color: coral),
+                          const SizedBox(width: 6),
+                          Text(
+                            shift['time']!,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: coral.withValues(alpha:0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.local_fire_department, size: 14, color: coral),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Смена',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: coral,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          Icon(Icons.beach_access_rounded, size: 18, color: Colors.grey.shade400),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Выходной',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
