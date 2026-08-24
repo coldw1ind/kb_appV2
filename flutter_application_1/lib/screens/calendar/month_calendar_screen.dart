@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_application_1/screens/calendar/month_or_week.dart';
+import 'package:flutter_application_1/theme/app_colors.dart';
+import 'package:flutter_application_1/widgets/app_card.dart';
 
 class CalendarScreen extends StatefulWidget {
   final VoidCallback onSwitchToWeek;
@@ -60,22 +62,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final events = _getEventsForDay(_selectedDate);
-    const teal = Color(0xFF0D9488);
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'График',
-          style: TextStyle(
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
-        ),
+        title: const Text('График'),
       ),
       body: Column(
         children: [
@@ -89,7 +80,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
           Container(
-            color: Colors.white,
+            color: AppColors.surface,
             padding: const EdgeInsets.only(bottom: 8),
             child: TableCalendar(
               focusedDay: _focusedDay,
@@ -108,30 +99,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 titleTextStyle: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
+                  color: AppColors.text,
                 ),
-                leftChevronIcon: Icon(Icons.chevron_left, color: teal),
-                rightChevronIcon: Icon(Icons.chevron_right, color: teal),
+                leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.teal),
+                rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.teal),
               ),
               calendarStyle: CalendarStyle(
                 defaultTextStyle: const TextStyle(
-                  color: Color(0xFF1E293B),
+                  color: AppColors.text,
                   fontSize: 14,
                 ),
                 weekendTextStyle: const TextStyle(
-                  color: Color(0xFF1E293B),
+                  color: AppColors.text,
                   fontSize: 14,
                 ),
                 todayDecoration: BoxDecoration(
-                  color: teal.withValues(alpha: 0.15),
+                  color: AppColors.teal.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 todayTextStyle: const TextStyle(
-                  color: teal,
+                  color: AppColors.teal,
                   fontWeight: FontWeight.w600,
                 ),
                 selectedDecoration: const BoxDecoration(
-                  color: teal,
+                  color: AppColors.teal,
                   shape: BoxShape.circle,
                 ),
                 selectedTextStyle: const TextStyle(
@@ -139,7 +130,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   fontWeight: FontWeight.w600,
                 ),
                 markerDecoration: const BoxDecoration(
-                  color: teal,
+                  color: AppColors.teal,
                   shape: BoxShape.circle,
                 ),
                 markersMaxCount: 1,
@@ -147,8 +138,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 outsideDaysVisible: false,
               ),
               daysOfWeekStyle: const DaysOfWeekStyle(
-                weekdayStyle: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                weekendStyle: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                weekdayStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                weekendStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
               ),
             ),
           ),
@@ -157,15 +148,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today_outlined, size: 18, color: teal),
+                const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.teal),
                 const SizedBox(width: 8),
                 Text(
                   'Смены на ${_formatDate(_selectedDate)}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E293B),
-                  ),
+                  style: textTheme.titleLarge,
                 ),
               ],
             ),
@@ -173,10 +160,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           const SizedBox(height: 12),
           Expanded(
             child: events.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'В этот день смен нет',
-                      style: TextStyle(color: Color(0xFF94A3B8)),
+                      style: textTheme.bodySmall,
                     ),
                   )
                 : ListView.separated(
@@ -185,33 +172,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final event = events[index];
-                      return Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
+                      return AppCard(
                         child: Row(
                           children: [
                             Container(
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: teal.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
+                                color: AppColors.teal.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
                               ),
                               child: Icon(
                                 event['role'] == 'Бармен'
                                     ? Icons.local_bar_outlined
                                     : Icons.restaurant_outlined,
-                                color: teal,
+                                color: AppColors.teal,
                                 size: 22,
                               ),
                             ),
@@ -220,26 +195,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    event['time']!,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: Color(0xFF1E293B),
-                                    ),
-                                  ),
+                                  Text(event['time']!, style: textTheme.titleMedium),
                                   const SizedBox(height: 2),
                                   Text(
                                     '${event['role']} — ${event['name']}',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF64748B),
-                                    ),
+                                    style: textTheme.bodyMedium,
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.chevron_right, color: Color(0xFFCBD5E1)),
+                            const Icon(Icons.chevron_right, color: AppColors.iconMuted),
                           ],
                         ),
                       );
@@ -254,18 +219,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: ElevatedButton.icon(
                 onPressed: () {},
                 icon: const Icon(Icons.person_outline, size: 20),
-                label: const Text(
-                  'Моя смена',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: teal,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
+                label: const Text('Моя смена'),
               ),
             ),
           ),

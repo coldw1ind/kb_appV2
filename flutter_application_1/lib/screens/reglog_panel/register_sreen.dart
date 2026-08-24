@@ -11,7 +11,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -27,7 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context,
       MaterialPageRoute(builder: (context) {
         return const LoginScreen();
-      })
+      }),
     );
   }
 
@@ -39,34 +38,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(
                 labelText: 'Email',
-                border: OutlineInputBorder()
               ),
             ),
             const SizedBox(height: 9),
-
             TextField(
               controller: _passwordController,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Password',
-                border: OutlineInputBorder()
               ),
             ),
             const SizedBox(height: 9),
-
             DropdownButtonFormField<String>(
               initialValue: _selectedRole,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Роль',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               ),
               items: _roles.map((role) {
                 return DropdownMenuItem(
@@ -80,23 +70,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 });
               },
             ),
-            
             const SizedBox(height: 40),
-
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  _goToLoginScreen();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.black
-                ),
-                child: Text('Зарегестрироваться'),
+                onPressed: _goToLoginScreen,
+                child: const Text('Зарегестрироваться'),
               ),
-            )
+            ),
           ],
         ),
       ),

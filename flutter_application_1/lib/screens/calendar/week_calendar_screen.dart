@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/calendar/month_or_week.dart';
+import 'package:flutter_application_1/theme/app_colors.dart';
+import 'package:flutter_application_1/widgets/app_card.dart';
 
 class WeekCalendarScreen extends StatefulWidget {
   final VoidCallback onSwitchToMonth;
@@ -83,26 +85,18 @@ class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const coral = Color(0xFFFF6B6B);
-    const bgColor = Color(0xFFFFF8F5);
+    final textTheme = Theme.of(context).textTheme;
     final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: AppColors.backgroundWarm,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Text(
-                'Мои смены',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Text('Мои смены', style: textTheme.headlineMedium),
             ),
             const SizedBox(height: 16),
             Padding(
@@ -124,29 +118,22 @@ class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
                     onPressed: () => _changeWeek(-1),
                     icon: const Icon(Icons.chevron_left_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: AppColors.surface,
                       shape: const CircleBorder(),
                     ),
                   ),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined, size: 16, color: coral),
+                      const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.coral),
                       const SizedBox(width: 8),
-                      Text(
-                        _formatWeekRange(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
+                      Text(_formatWeekRange(), style: textTheme.titleMedium),
                     ],
                   ),
                   IconButton(
                     onPressed: () => _changeWeek(1),
                     icon: const Icon(Icons.chevron_right_rounded),
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: AppColors.surface,
                       shape: const CircleBorder(),
                     ),
                   ),
@@ -164,26 +151,16 @@ class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
                   final shift = _shifts[_dateOnly(day)];
                   final isShift = shift != null;
 
-                  return Container(
+                  return AppCard(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
+                    radius: AppRadius.xl,
                     child: Row(
                       children: [
                         Container(
                           width: 4,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: isShift ? coral : const Color(0xFFE2E8F0),
+                            color: isShift ? AppColors.coral : AppColors.line,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -192,67 +169,42 @@ class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                _dayName(day.weekday),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  color: Color(0xFF1E293B),
-                                ),
-                              ),
+                              Text(_dayName(day.weekday), style: textTheme.titleMedium),
                               const SizedBox(height: 2),
-                              Text(
-                                _formatDay(day),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF94A3B8),
-                                ),
-                              ),
+                              Text(_formatDay(day), style: textTheme.bodySmall),
                             ],
                           ),
                         ),
                         if (isShift) ...[
-                          const Icon(Icons.access_time_rounded, size: 16, color: coral),
+                          const Icon(Icons.access_time_rounded, size: 16, color: AppColors.coral),
                           const SizedBox(width: 6),
-                          Text(
-                            shift['time']!,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
+                          Text(shift['time']!, style: textTheme.titleSmall),
                           const SizedBox(width: 10),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: coral.withValues(alpha:0.12),
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.coral.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.local_fire_department, size: 14, color: coral),
-                                SizedBox(width: 4),
+                                const Icon(Icons.local_fire_department, size: 14, color: AppColors.coral),
+                                const SizedBox(width: 4),
                                 Text(
                                   'Смена',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: coral,
-                                  ),
+                                  style: textTheme.labelSmall?.copyWith(color: AppColors.coral),
                                 ),
                               ],
                             ),
                           ),
                         ] else ...[
-                          Icon(Icons.beach_access_rounded, size: 18, color: Colors.grey.shade400),
+                          const Icon(Icons.beach_access_rounded, size: 18, color: AppColors.textHint),
                           const SizedBox(width: 6),
                           Text(
                             'Выходной',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade500,
+                            style: textTheme.titleSmall?.copyWith(
+                              color: AppColors.textHint,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

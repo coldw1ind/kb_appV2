@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/calendar/month_calendar_screen.dart';
 import 'package:flutter_application_1/screens/calendar/week_calendar_screen.dart';
+import 'package:flutter_application_1/theme/app_colors.dart';
 
 class CalendarTab extends StatefulWidget {
   const CalendarTab({super.key});
@@ -38,12 +39,10 @@ class CalendarChange extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const coral = Color(0xFFFF6B6B);
-
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -54,14 +53,14 @@ class CalendarChange extends StatelessWidget {
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isMonthView ? coral : Colors.transparent,
+                  color: isMonthView ? AppColors.coral : Colors.transparent,
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Text(
                   'Месяц',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: isMonthView ? Colors.white : const Color(0xFF94A3B8),
+                    color: isMonthView ? Colors.white : AppColors.textHint,
                   ),
                 ),
               ),
@@ -73,14 +72,14 @@ class CalendarChange extends StatelessWidget {
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: !isMonthView ? coral : Colors.transparent,
+                  color: !isMonthView ? AppColors.coral : Colors.transparent,
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Text(
                   'Неделя',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: !isMonthView ? Colors.white : const Color(0xFF94A3B8),
+                    color: !isMonthView ? Colors.white : AppColors.textHint,
                   ),
                 ),
               ),
