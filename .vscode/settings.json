@@ -1,0 +1,16 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "kb_app",
+            "group": "local",
+            "database": "kb_app",
+            "username": "postgres",
+            "password": "hotdog123"
+        }
+    ]
+}
