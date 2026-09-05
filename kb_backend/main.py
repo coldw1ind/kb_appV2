@@ -9,33 +9,62 @@ app = FastAPI(title="App API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+BARS = [
+    "Дачный пр., 17к2",
+    "Клочков пер., 6",
+    "Коломяжский пр., 15к2",
+    "пл. Стачек, 7",
+    "ул. Марата, 7",
+    "Владимирский пр., 17",
+    "ул. Садовая, 35",
+    "ул. Садовая, 41",
+    "пр. Просвещения, 25",
+    "Средний пр. В.О., 28",
+    "пр. Чернышевского, 11",
+    "ул. Бухарестская, 74",
+    "2-я Красноармейская, 9/3",
+    "Невский пр., 8",
+    "пр. Науки, 23к2",
+    "Гаккелевская ул., 34",
+]
+
+
 class UsersData(BaseModel):
     username: str
     email: EmailStr
     password: str
     employee_role: str
+    bar: str
 
 @app.get("/")
 def root():
     return {"message": "API is working"}
 
+@app.get("/bars")
+def get_bars():
+    return BARS
+
 @app.post("/register")
 def register_user(data: UsersData):
-    conn = get_connection()
-    cur = conn.cursor()
+    if data.bar not in BARS:
+        raise HTTPException(status_code=400, detail="Неизвестный бар")
 
-    cur.execute(
-        "INSERT INTO users (username, email, password_hash, employee_role) VALUES (%s, %s, %s, %s)",
-        (data.username, data.email, data.password, data.employee_role)
-    )
-
-    conn.commit()
-    cur.close()
-    conn.close()
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO users (username, email, password_hash, employee_role, bar) VALUES (%s, %s, %s, %s, %s)",
+            (data.username, data.email, data.password, data.employee_role, data.bar),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return {"message": "User registered successfully"}
 
