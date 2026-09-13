@@ -1,19 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
-const _bg = Color(0xFFFFF7F2);
-const _ink = Color(0xFF1C1917);
-const _muted = Color(0xFF78716C);
-const _accent = Color(0xFFE85D4C);
-const _line = Color(0xFFE7E0DA);
-
-class TeamMember {
-  const TeamMember(this.name, this.role, this.place, this.onShift, this.initials);
-  final String name;
-  final String role;
-  final String place;
-  final bool onShift;
-  final String initials;
-}
+import 'package:http/http.dart' as http;
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -23,46 +10,80 @@ class TeamScreen extends StatefulWidget {
 }
 
 class _TeamScreenState extends State<TeamScreen> {
-  final _people = const [
-    TeamMember('Алексей Иванов', 'Бармен', 'Контакт Бар • Центр', true, 'АИ'),
-    TeamMember('Мария Смирнова', 'Официант', 'Контакт Бар • Центр', true, 'МС'),
-    TeamMember('Дмитрий Орлов', 'Бармен', 'Контакт Бар • Центр', false, 'ДО'),
-    TeamMember('Анна Кузнецова', 'Менеджер', 'Контакт Бар • Центр', true, 'АК'),
-  ];
-
+  bool _loading = true;
+  String? _error;
+  List<dynamic> _people = [];
   String _query = '';
   String _filter = 'Все';
 
   @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:8000/employees'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка ${response.statusCode}');
+      }
+
+      final body = jsonDecode(response.body);
+      setState(() {
+        _people = body['employees'] as List<dynamic>;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Не удалось загрузить команду';
+        _loading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final filters = ['Все', 'Бармен', 'Официант', 'Менеджер'];
+    final filters = ['Все', 'Официант', 'Бармен', 'Менеджер'];
+
     final list = _people.where((p) {
-      final byName = p.name.toLowerCase().contains(_query.toLowerCase());
-      final byRole = _filter == 'Все' || p.role == _filter;
+      final name = (p['username'] ?? '').toString();
+      final role = (p['employee_role'] ?? '').toString();
+      final byName = name.toLowerCase().contains(_query.toLowerCase());
+      final byRole = _filter == 'Все' || role == _filter;
       return byName && byRole;
     }).toList();
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: const Color(0xFFFFF7F2),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Наша команда',
-                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _ink)),
-                  SizedBox(height: 6),
-                  Text('Люди, которые делают Контакт Бар',
-                      style: TextStyle(color: _muted)),
-                ],
+              child: Text(
+                'Наша команда',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Text(
+                'Сотрудники из базы',
+                style: TextStyle(color: Color(0xFF78716C)),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
                 onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
@@ -72,11 +93,11 @@ class _TeamScreenState extends State<TeamScreen> {
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: _line),
                   ),
                 ),
               ),
             ),
+            const SizedBox(height: 10),
             SizedBox(
               height: 42,
               child: ListView(
@@ -90,11 +111,6 @@ class _TeamScreenState extends State<TeamScreen> {
                       label: Text(f),
                       selected: selected,
                       onSelected: (_) => setState(() => _filter = f),
-                      selectedColor: _accent,
-                      labelStyle: TextStyle(
-                        color: selected ? Colors.white : _ink,
-                        fontWeight: FontWeight.w600,
-                      ),
                     ),
                   );
                 }).toList(),
@@ -102,48 +118,55 @@ class _TeamScreenState extends State<TeamScreen> {
             ),
             const SizedBox(height: 10),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                itemCount: list.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, i) {
-                  final p = list[i];
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: _accent.withOpacity(0.15),
-                          child: Text(p.initials, style: const TextStyle(color: _accent, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                              Text('${p.role}  •  ${p.place}',
-                                  style: const TextStyle(color: _muted, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          p.onShift ? 'На смене' : 'Выходной',
-                          style: TextStyle(
-                            color: p.onShift ? const Color(0xFF16A34A) : _muted,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(child: Text(_error!))
+                      : list.isEmpty
+                          ? const Center(child: Text('Пока никто не зарегистрирован'))
+                          : ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                              itemCount: list.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 10),
+                              itemBuilder: (context, i) {
+                                final p = list[i];
+                                final name = (p['username'] ?? '').toString();
+                                final role = (p['employee_role'] ?? '').toString();
+
+                                return Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        child: Text(
+                                          name.isEmpty ? '?' : name[0].toUpperCase(),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: const TextStyle(fontWeight: FontWeight.w700),
+                                            ),
+                                            Text(
+                                              role,
+                                              style: const TextStyle(color: Color(0xFF78716C)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
             ),
           ],
         ),

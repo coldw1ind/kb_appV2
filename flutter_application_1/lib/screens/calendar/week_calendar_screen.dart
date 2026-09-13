@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/calendar/month_or_week.dart';
 import 'package:flutter_application_1/theme/app_colors.dart';
 import 'package:flutter_application_1/widgets/app_card.dart';
+import 'package:http/http.dart' as http;  // ✅ Добавлено
+import 'dart:convert';                    // ✅ Добавлено
 
 class WeekCalendarScreen extends StatefulWidget {
   final VoidCallback onSwitchToMonth;
@@ -17,13 +19,46 @@ class WeekCalendarScreen extends StatefulWidget {
 
 class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
   late DateTime _weekStart;
-  final Map<DateTime, Map<String, String>?> _shifts = {};
+  
+  // ✅ Переименовал в _shifts для единообразия
+  Map<DateTime, Map<String, String>?> _shifts = {};
 
   @override
   void initState() {
     super.initState();
     _weekStart = _getWeekStart(DateTime.now());
-    _generateDemoData();
+    _loadShifts();  // ✅ Вызываем загрузку данных
+  }
+
+  // ✅ Исправленный метод _loadShifts
+  Future<void> _loadShifts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:8000/shifts')
+      );
+      if (response.statusCode != 200) return;
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final rows = (body['shifts'] ?? []) as List<dynamic>;
+
+      final mapped = <DateTime, Map<String, String>>{};  // Временный Map
+
+      for (final row in rows) {
+        final item = row as Map<String, dynamic>;
+        final parsed = DateTime.parse(item['date'].toString());
+        final key = DateTime(parsed.year, parsed.month, parsed.day);
+        // Для недельного режима храним только одну смену на день
+        mapped[key] = {
+          'time': item['time'].toString(),
+          'role': item['role'].toString(),
+          'name': item['name'].toString(),
+        };
+      }
+
+      setState(() => _shifts = mapped);
+    } catch (e) {
+      print('SHIFTS ERROR: $e');  // ✅ Добавлена ;
+    }
   }
 
   DateTime _getWeekStart(DateTime date) {
@@ -34,23 +69,10 @@ class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
     return DateTime(date.year, date.month, date.day);
   }
 
-  void _generateDemoData() {
-    _shifts.clear();
-    final days = List.generate(7, (i) => _dateOnly(_weekStart.add(Duration(days: i))));
-
-    _shifts[days[0]] = {'time': '18:00 – 02:00'};
-    _shifts[days[1]] = null;
-    _shifts[days[2]] = {'time': '16:00 – 00:00'};
-    _shifts[days[3]] = null;
-    _shifts[days[4]] = {'time': '17:00 – 01:00'};
-    _shifts[days[5]] = null;
-    _shifts[days[6]] = {'time': '15:00 – 23:00'};
-  }
-
   void _changeWeek(int offset) {
     setState(() {
       _weekStart = _weekStart.add(Duration(days: 7 * offset));
-      _generateDemoData();
+      // ✅ Не нужно перегенерировать демо-данные, они уже загружены
     });
   }
 
@@ -145,10 +167,10 @@ class _WeekCalendarScreenState extends State<WeekCalendarScreen> {
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                 itemCount: 7,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final day = days[index];
-                  final shift = _shifts[_dateOnly(day)];
+                  final shift = _shifts[_dateOnly(day)];  // ✅ _shifts объявлен
                   final isShift = shift != null;
 
                   return AppCard(

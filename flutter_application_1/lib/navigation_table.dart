@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/achievements/achievements_screen.dart';
 import 'package:flutter_application_1/screens/calendar/month_or_week.dart';
-import 'package:flutter_application_1/screens/reglog_panel/login_screen.dart';
-import 'package:flutter_application_1/screens/learning/learn_screen.dart';
+import 'package:flutter_application_1/screens/learning_panel/learn_screen.dart';
+import 'package:flutter_application_1/screens/team_panel/team_screen.dart';
+import 'package:flutter_application_1/screens/home_panel/home_screen.dart';
+
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -14,11 +16,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const CalendarTab(),
+    const HomeScreen(),
     const LearningScreen(),
     const AchievementsScreen(),
     const CalendarTab(),
-    const LoginScreen(),
+    const TeamScreen(),
   ];
 
   @override

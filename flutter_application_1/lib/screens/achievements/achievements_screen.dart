@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/theme/app_colors.dart';
 import 'package:flutter_application_1/widgets/app_card.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
+// ============================================
+// ENUM ТИПОВ ДОСТИЖЕНИЙ
+// ============================================
 enum AchievementType {
   salesPercent,
   revenue,
@@ -11,6 +16,8 @@ enum AchievementType {
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
+  static const _userId = 1; // потом подставишь id после логина
+  static const _baseUrl = 'http://127.0.0.1:8000';
 
   @override
   State<AchievementsScreen> createState() => _AchievementsScreenState();
@@ -20,6 +27,63 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   final int _shiftStreak = 5;
   final List<_UserAchievement> _records = [];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadRecords();
+  }
+
+  // ============================================
+  // ПРЕОБРАЗОВАНИЕ API-СТРОКИ В ENUM
+  // ============================================
+  AchievementType? _typeFromApi(String raw) {
+    for (final entry in _AchievementTypeMeta.values.entries) {
+      if (entry.value.apiName == raw) return entry.key;
+    }
+    return null;
+  }
+
+  // ============================================
+  // ЗАГРУЗКА ЗАПИСЕЙ С СЕРВЕРА
+  // ============================================
+  Future<void> _loadRecords() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AchievementsScreen._baseUrl}/achievements?user_id=${AchievementsScreen._userId}'),
+      );
+      if (response.statusCode != 200) return;
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final rows = (body['achievements'] ?? []) as List<dynamic>;
+
+      final items = <_UserAchievement>[];
+      for (final row in rows) {
+        final item = row as Map<String, dynamic>;
+        final type = _typeFromApi(item['type'].toString());
+        if (type == null) continue;
+        items.add(
+          _UserAchievement(
+            id: item['id'] as int,
+            type: type,
+            value: (item['value'] as num).toDouble(),
+            createdAt: DateTime.parse(item['created_at'].toString()),
+          ),
+        );
+      }
+
+      setState(() {
+        _records
+          ..clear()
+          ..addAll(items);
+      });
+    } catch (e) {
+      print('ACHIEVEMENTS LOAD ERROR: $e');
+    }
+  }
+
+  // ============================================
+  // ДОБАВЛЕНИЕ ЗАПИСИ (с отправкой на сервер)
+  // ============================================
   Future<void> _addRecord() async {
     final record = await showModalBottomSheet<_UserAchievement>(
       context: context,
@@ -38,15 +102,36 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
     if (record == null) return;
 
-    setState(() {
-      _records.insert(0, record);
-    });
+    try {
+      final meta = _AchievementTypeMeta.values[record.type]!;
+      final response = await http.post(
+        Uri.parse('${AchievementsScreen._baseUrl}/achievements'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': AchievementsScreen._userId,
+          'type': meta.apiName,
+          'value': record.value,
+        }),
+      );
+
+      if (response.statusCode != 200) return;
+      await _loadRecords();
+    } catch (e) {
+      print('ACHIEVEMENTS ADD ERROR: $e');
+    }
   }
 
-  void _removeRecord(int index) {
-    setState(() {
-      _records.removeAt(index);
-    });
+  // ============================================
+  // УДАЛЕНИЕ ЗАПИСИ (с сервера)
+  // ============================================
+  Future<void> _removeRecord(int index) async {
+    final record = _records[index];
+    if (record.id != null) {
+      await http.delete(
+        Uri.parse('${AchievementsScreen._baseUrl}/achievements/${record.id}'),
+      );
+    }
+    await _loadRecords();
   }
 
   @override
@@ -125,18 +210,26 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   }
 }
 
+// ============================================
+// МОДЕЛЬ ЗАПИСИ ДОСТИЖЕНИЯ
+// ============================================
 class _UserAchievement {
+  final int? id;
   final AchievementType type;
   final double value;
   final DateTime createdAt;
 
   const _UserAchievement({
+    this.id,
     required this.type,
     required this.value,
     required this.createdAt,
   });
 }
 
+// ============================================
+// МЕТАДАННЫЕ ТИПОВ ДОСТИЖЕНИЙ
+// ============================================
 class _AchievementTypeMeta {
   final String apiName;
   final String label;
@@ -177,6 +270,9 @@ class _AchievementTypeMeta {
   };
 }
 
+// ============================================
+// КАРТОЧКА СТРИКА
+// ============================================
 class _StreakCard extends StatelessWidget {
   final int streak;
 
@@ -247,6 +343,9 @@ class _StreakCard extends StatelessWidget {
   }
 }
 
+// ============================================
+// КАРТОЧКА ЗАПИСИ
+// ============================================
 class _RecordCard extends StatelessWidget {
   final _UserAchievement record;
   final VoidCallback onDelete;
@@ -316,6 +415,9 @@ class _RecordCard extends StatelessWidget {
   }
 }
 
+// ============================================
+// BOTTOM SHEET ДЛЯ ДОБАВЛЕНИЯ
+// ============================================
 class _AddAchievementSheet extends StatefulWidget {
   const _AddAchievementSheet();
 

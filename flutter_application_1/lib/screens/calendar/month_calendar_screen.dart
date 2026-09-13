@@ -3,6 +3,8 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_application_1/screens/calendar/month_or_week.dart';
 import 'package:flutter_application_1/theme/app_colors.dart';
 import 'package:flutter_application_1/widgets/app_card.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class CalendarScreen extends StatefulWidget {
   final VoidCallback onSwitchToWeek;
@@ -17,27 +19,49 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  Map<DateTime, List<Map<String, String>>> _events = {};
+
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedDay = DateTime.now();
-
   final DateTime _firstDate = DateTime(2024);
   final DateTime _lastDate = DateTime(2030);
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadShifts();
+  }
 
-  final Map<DateTime, List<Map<String, String>>> _events = {
-    DateTime.utc(2026, 8, 13): [
-      {'time': '10:00 – 18:00', 'role': 'Официант', 'name': 'Иван'},
-      {'time': '18:00 – 02:00', 'role': 'Бармен', 'name': 'Мария'},
-    ],
-    DateTime.utc(2026, 8, 14): [
-      {'time': '12:00 – 20:00', 'role': 'Официант', 'name': 'Анна'},
-      {'time': '16:00 – 00:00', 'role': 'Бармен', 'name': 'Максим'},
-    ],
-    DateTime.utc(2026, 8, 15): [
-      {'time': '10:00 – 18:00', 'role': 'Официант', 'name': 'Иван'},
-      {'time': '18:00 – 02:00', 'role': 'Официант', 'name': 'Ольга'},
-      {'time': '20:00 – 04:00', 'role': 'Бармен', 'name': 'Мария'},
-    ],
-  };
+  Future<void> _loadShifts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:8000/shifts'),
+      );
+      if (response.statusCode != 200) return;
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final rows = (body['shifts'] ?? []) as List<dynamic>;
+
+      final mapped = <DateTime, List<Map<String, String>>>{};
+
+      for (final row in rows) {
+        final item = row as Map<String, dynamic>;
+        final parsed = DateTime.parse(item['date'].toString());
+        final key = DateTime.utc(parsed.year, parsed.month, parsed.day);
+
+        mapped.putIfAbsent(key, () => []);
+        mapped[key]!.add({
+          'time': item['time'].toString(),
+          'role': item['role'].toString(),
+          'name': item['name'].toString(),
+        });
+      }
+
+      setState(() => _events = mapped);
+    } catch (e) {
+      print('SHIFTS ERROR: $e');
+    }
+  }
 
   List<Map<String, String>> _getEventsForDay(DateTime day) {
     final key = DateTime.utc(day.year, day.month, day.day);
@@ -169,7 +193,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: events.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final event = events[index];
                       return AppCard(
