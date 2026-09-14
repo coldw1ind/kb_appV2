@@ -1,4 +1,3 @@
-import pydantic
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -9,132 +8,177 @@ app = FastAPI(title="App API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-#HelloWorld
+BARS = [
+    "Дачный пр., 17к2",
+    "Клочков пер., 6",
+    "Коломяжский пр., 15к2",
+    "пл. Стачек, 7",
+    "ул. Марата, 7",
+    "Владимирский пр., 17",
+    "ул. Садовая, 35",
+    "ул. Садовая, 41",
+    "пр. Просвещения, 25",
+    "Средний пр. В.О., 28",
+    "пр. Чернышевского, 11",
+    "ул. Бухарестская, 74",
+    "2-я Красноармейская, 9/3",
+    "Невский пр., 8",
+    "пр. Науки, 23к2",
+    "Гаккелевская ул., 34",
+]
+
+
 class UsersData(BaseModel):
     username: str
     email: EmailStr
     password: str
     employee_role: str
+    bar: str
 
-@app.get("/")
-def root():
-    return {"message": "API is working"}
-
-@app.post("/register")
-def register_user(data: UsersData):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "INSERT INTO users (username, email, password_hash, employee_role) VALUES (%s, %s, %s, %s)",
-        (data.username, data.email, data.password, data.employee_role)
-    )
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return {"message": "User registered successfully"}
 
 class LoginData(BaseModel):
     email: EmailStr
     password: str
 
-@app.post("/login")
-def login_user(data: LoginData):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT id, email, password_hash FROM users WHERE email = %s",
-        (str(data.email).lower(),)
-    )
-
-    user = cur.fetchone()
-    
-    stored_password = user["password_hash"] if isinstance(user, dict) else user[2]
-
-    if stored_password != data.password:
-        raise HTTPException(status_code=401, detail="Invalid Credentials")
-
-    return {
-        "message":"Вход выполнен"
-    }
-
-    
-    cur.close()
-    conn.close()
-
-@app.get("/employees")
-def get_employees():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT id, username, email, employee_role FROM users ORDER BY id"
-    )
-
-    rows = cur.fetchall()
-    employees = []
-    for row in rows:
-        if isinstance(row, dict):
-            employees.append(row)
-        else:
-            employees.append({
-                "id": row[0],
-                "username": row[1],
-                "email": row[2],
-                "employee_role": row[3],
-            })
-    return {"employees": employees}
-    cur.close()
-    conn.close()
-
-@app.get("/shifts")
-def get_shifts():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT s.id, s.shift_date, s.start_time, s.end_time, s.role, u.username
-        FROM shifts s JOIN users u ON u.id = s.user_id ORDER BY s.shift_date, s.start_time
-        """
-    )
-    rows = cur.fetchall()
-    shifts = []
-    for row in rows:
-        if isinstance(row, dict):
-            d = row["shift_date"]
-            shifts.append({
-                "id": row["id"],
-                "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
-                "time": f"{row['start_time']} - {row['end_time']}",
-                "role": row["role"],
-                "name": row["username"],
-            })
-        else:
-            d = row[1]
-            shifts.append({
-                "id": row[0],
-                "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
-                "time": f"{row[2]} – {row[3]}",
-                "role": row[4],
-                "name": row[5],
-            })
-    return {"shifts": shifts}
-
-    cur.close()
-    conn.close()
 
 class AchievementData(BaseModel):
     user_id: int
     type: str
     value: float
+
+
+@app.get("/")
+def root():
+    return {"message": "API is working"}
+
+
+@app.get("/bars")
+def get_bars():
+    return BARS
+
+
+@app.post("/register")
+def register_user(data: UsersData):
+    if data.bar not in BARS:
+        raise HTTPException(status_code=400, detail="Неизвестный бар")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO users (username, email, password_hash, employee_role, bar)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (data.username, data.email, data.password, data.employee_role, data.bar),
+        )
+        conn.commit()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        cur.close()
+        conn.close()
+
+    return {"message": "User registered successfully"}
+
+
+@app.post("/login")
+def login_user(data: LoginData):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, email, password_hash FROM users WHERE email = %s",
+            (str(data.email).lower(),),
+        )
+        user = cur.fetchone()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Invalid Credentials")
+
+        stored_password = user["password_hash"] if isinstance(user, dict) else user[2]
+        if stored_password != data.password:
+            raise HTTPException(status_code=401, detail="Invalid Credentials")
+
+        return {"message": "Вход выполнен"}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/employees")
+def get_employees():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT id, username, email, employee_role, bar
+            FROM users
+            ORDER BY id
+            """
+        )
+        rows = cur.fetchall()
+        employees = []
+        for row in rows:
+            if isinstance(row, dict):
+                employees.append(row)
+            else:
+                employees.append({
+                    "id": row[0],
+                    "username": row[1],
+                    "email": row[2],
+                    "employee_role": row[3],
+                    "bar": row[4] if len(row) > 4 else None,
+                })
+        return {"employees": employees}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/shifts")
+def get_shifts():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT s.id, s.shift_date, s.start_time, s.end_time, s.role, u.username
+            FROM shifts s
+            JOIN users u ON u.id = s.user_id
+            ORDER BY s.shift_date, s.start_time
+            """
+        )
+        rows = cur.fetchall()
+        shifts = []
+        for row in rows:
+            if isinstance(row, dict):
+                d = row["shift_date"]
+                shifts.append({
+                    "id": row["id"],
+                    "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
+                    "time": f"{row['start_time']} – {row['end_time']}",
+                    "role": row["role"],
+                    "name": row["username"],
+                })
+            else:
+                d = row[1]
+                shifts.append({
+                    "id": row[0],
+                    "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
+                    "time": f"{row[2]} – {row[3]}",
+                    "role": row[4],
+                    "name": row[5],
+                })
+        return {"shifts": shifts}
+    finally:
+        cur.close()
+        conn.close()
 
 
 @app.get("/achievements")
@@ -223,6 +267,7 @@ def delete_achievement(achievement_id: int):
         cur.close()
         conn.close()
 
+
 @app.get("/courses")
 def get_courses(user_id: int):
     conn = get_connection()
@@ -247,24 +292,20 @@ def get_courses(user_id: int):
         courses = []
         for row in rows:
             if isinstance(row, dict):
-                total = row["lessons_total"]
-                done = row["lessons_done"]
                 courses.append({
                     "id": row["id"],
                     "title": row["title"],
                     "category": row["category"],
-                    "lessons_total": total,
-                    "lessons_done": done,
+                    "lessons_total": row["lessons_total"],
+                    "lessons_done": row["lessons_done"],
                 })
             else:
-                total = row[3]
-                done = row[4]
                 courses.append({
                     "id": row[0],
                     "title": row[1],
                     "category": row[2],
-                    "lessons_total": total,
-                    "lessons_done": done,
+                    "lessons_total": row[3],
+                    "lessons_done": row[4],
                 })
         return {"courses": courses}
     finally:
