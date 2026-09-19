@@ -5,6 +5,9 @@ import 'package:flutter_application_1/theme/app_colors.dart';
 import 'package:flutter_application_1/widgets/app_card.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_application_1/screens/calendar/wishes_screen.dart';
+// ↓ добавь этот импорт (путь подгони под свой проект)
+import 'package:flutter_application_1/screens/calendar/manager_schedule_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   final VoidCallback onSwitchToWeek;
@@ -25,7 +28,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   final DateTime _firstDate = DateTime(2024);
   final DateTime _lastDate = DateTime(2030);
-  
+
   @override
   void initState() {
     super.initState();
@@ -235,18 +238,47 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     },
                   ),
           ),
+
+          // ↓↓↓ ЗАМЕНЕНО: теперь две кнопки ↓↓↓
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.person_outline, size: 20),
-                label: const Text('Моя смена'),
-              ),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WishesScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.person_outline, size: 20),
+                    label: const Text('Моя смена'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ManagerScheduleScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit_calendar_outlined, size: 20),
+                    label: const Text('Сборка графика'),
+                  ),
+                ),
+              ],
             ),
           ),
+          // ↑↑↑ конец замены ↑↑↑
         ],
       ),
     );
