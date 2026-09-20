@@ -539,3 +539,32 @@ def send_to_director(period_id: int):
     finally:
         cur.close()
         conn.close()
+
+@app.post("/periods/{period_id}/publish")
+def publish_period(period_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO shifts (user_id, shift_date, start_time, end_time, role)
+            SELECT user_id, shift_date, start_time, end_time, role
+            FROM draft_shifts
+            WHERE period_id = %s
+            """,
+            (period_id,),
+        )
+        cur.execute(
+            """
+            UPDATE schedule_periods
+            SET status = 'published',
+                published_at = NOW()
+            WHERE id = %s
+            """,
+            (period_id,),
+        )
+        conn.commit()
+        return {"ok": True, "status": "published"}
+    finally:
+        cur.close()
+        conn.close()

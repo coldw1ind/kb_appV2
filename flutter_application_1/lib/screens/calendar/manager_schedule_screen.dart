@@ -116,6 +116,21 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     }
   }
 
+  // ↓↓↓ ДОБАВЛЕНО ↓↓↓
+  Future<void> _publish() async {
+    final id = _period!['id'];
+    final response = await http.post(
+      Uri.parse('$_baseUrl/periods/$id/publish'),
+    );
+    if (response.statusCode == 200 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('График обновлён у всех')),
+      );
+      await _load();
+    }
+  }
+  // ↑↑↑ конец добавления ↑↑↑
+
   @override
   Widget build(BuildContext context) {
     final grouped = <String, List<Map<String, dynamic>>>{};
@@ -193,17 +208,33 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                             }).toList(),
                           ),
                         ),
+
+                        // ↓↓↓ ЗАМЕНЕНО: две кнопки вместо одной ↓↓↓
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton(
-                              onPressed: _drafts.isEmpty ? null : _sendToDirector,
-                              child: const Text('Отправить управляющему'),
-                            ),
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: ElevatedButton(
+                                  onPressed: _drafts.isEmpty ? null : _sendToDirector,
+                                  child: const Text('Отправить управляющему'),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: OutlinedButton(
+                                  onPressed: _drafts.isEmpty ? null : _publish,
+                                  child: const Text('Утвердить график'),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        // ↑↑↑ конец замены ↑↑↑
                       ],
                     ),
     );

@@ -6,7 +6,6 @@ import 'package:flutter_application_1/widgets/app_card.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_application_1/screens/calendar/wishes_screen.dart';
-// ↓ добавь этот импорт (путь подгони под свой проект)
 import 'package:flutter_application_1/screens/calendar/manager_schedule_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
