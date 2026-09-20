@@ -130,6 +130,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.teal),
                 rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.teal),
               ),
+              calendarBuilders: CalendarBuilders(
+                singleMarkerBuilder: (_, date, _) {
+                  final isSelected = isSameDay(date, _selectedDate);
+                  return Container(
+                    width: 6,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.white : AppColors.coral,
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                },
+              ),
               calendarStyle: CalendarStyle(
                 defaultTextStyle: const TextStyle(
                   color: AppColors.text,
@@ -156,7 +170,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   fontWeight: FontWeight.w600,
                 ),
                 markerDecoration: const BoxDecoration(
-                  color: AppColors.teal,
+                  color: AppColors.coral,
                   shape: BoxShape.circle,
                 ),
                 markersMaxCount: 1,
