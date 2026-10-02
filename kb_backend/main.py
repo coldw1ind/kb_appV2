@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -94,18 +95,43 @@ def login_user(data: LoginData):
     cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT id, email, password_hash FROM users WHERE email = %s",
+            """
+            SELECT id, username, email, password_hash, employee_role, bar
+            FROM users
+            WHERE email = %s
+            """,
             (str(data.email).lower(),),
         )
         user = cur.fetchone()
         if user is None:
             raise HTTPException(status_code=401, detail="Invalid Credentials")
 
-        stored_password = user["password_hash"] if isinstance(user, dict) else user[2]
-        if stored_password != data.password:
+        if isinstance(user, dict):
+            stored = user["password_hash"]
+            payload = {
+                "id": user["id"],
+                "username": user["username"],
+                "email": user["email"],
+                "employee_role": user["employee_role"],
+                "bar": user.get("bar"),
+            }
+        else:
+            stored = user[3]
+            payload = {
+                "id": user[0],
+                "username": user[1],
+                "email": user[2],
+                "employee_role": user[4],
+                "bar": user[5] if len(user) > 5 else None,
+            }
+
+        if stored != data.password:
             raise HTTPException(status_code=401, detail="Invalid Credentials")
 
-        return {"message": "Вход выполнен"}
+        return {
+            "message": "Вход выполнен",
+            "user": payload,
+        }
     finally:
         cur.close()
         conn.close()
