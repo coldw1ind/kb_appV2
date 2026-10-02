@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/navigation_table.dart';
 import 'package:flutter_application_1/screens/reglog_panel/register_sreen.dart';
+import 'package:flutter_application_1/api/api_config.dart';
+import 'package:flutter_application_1/api/auth_state.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,16 +29,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (!email.contains('@')) {
-      _showMessage('Некорректный данные');
+      _showMessage('Некорректный email');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      const baseUrl = 'http://127.0.0.1:8000';
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
+        Uri.parse('${ApiConfig.baseUrl}/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -48,10 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
       print('BODY: ${response.body}');
 
       if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final user = body['user'];
+        if (user is Map<String, dynamic>) {
+          AuthState.setFromJson(user);
+        }
         _goToMainScreen();
       } else {
         _showMessage('Неверный email или пароль');
       }
+    } catch (e) {
+      _showMessage('Нет связи с сервером');
+      print('LOGIN ERROR: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
