@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_application_1/api/auth_state.dart';
 
 const _bg = Color(0xFFFFF7F2);
 const _ink = Color(0xFF1C1917);
@@ -17,8 +18,10 @@ class LearningScreen extends StatefulWidget {
 }
 
 class _LearningScreenState extends State<LearningScreen> {
-  static const _userId = 1;
   static const _baseUrl = 'http://127.0.0.1:8000';
+
+  /// Актуальный id пользователя из глобального состояния.
+  int? get _userId => AuthState.id;
 
   bool _loading = true;
   List<Map<String, dynamic>> _courses = [];
@@ -30,11 +33,18 @@ class _LearningScreenState extends State<LearningScreen> {
   }
 
   Future<void> _load() async {
+    final userId = _userId;
+    if (userId == null) {
+      setState(() => _loading = false);
+      return;
+    }
+
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/courses?user_id=$_userId'),
+        Uri.parse('$_baseUrl/courses?user_id=$userId'),
       );
       if (response.statusCode != 200) {
+        if (!mounted) return;
         setState(() => _loading = false);
         return;
       }
@@ -42,12 +52,14 @@ class _LearningScreenState extends State<LearningScreen> {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final rows = (body['courses'] ?? []) as List<dynamic>;
 
+      if (!mounted) return;
       setState(() {
         _courses = rows.cast<Map<String, dynamic>>();
         _loading = false;
       });
     } catch (e) {
       print('COURSES ERROR: $e');
+      if (!mounted) return;
       setState(() => _loading = false);
     }
   }

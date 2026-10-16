@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_application_1/api/auth_state.dart';
 
 class WishesScreen extends StatefulWidget {
   const WishesScreen({super.key});
@@ -11,7 +12,7 @@ class WishesScreen extends StatefulWidget {
 
 class _WishesScreenState extends State<WishesScreen> {
   static const _baseUrl = 'http://127.0.0.1:8000';
-  static const _userId = 1; // потом подставишь id после логина
+  final _userId = AuthState.id;
 
   bool _loading = true;
   String? _error;

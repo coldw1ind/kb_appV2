@@ -4,6 +4,8 @@ import 'package:flutter_application_1/theme/app_colors.dart';
 import 'package:flutter_application_1/widgets/app_card.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_application_1/api/auth_state.dart';
+
 
 // ============================================
 // ENUM ТИПОВ ДОСТИЖЕНИЙ
@@ -16,16 +18,19 @@ enum AchievementType {
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
-  static const _userId = 1; // потом подставишь id после логина
-  static const _baseUrl = 'http://127.0.0.1:8000';
 
   @override
   State<AchievementsScreen> createState() => _AchievementsScreenState();
 }
 
 class _AchievementsScreenState extends State<AchievementsScreen> {
+  static const _baseUrl = 'http://127.0.0.1:8000';
+
   final int _shiftStreak = 5;
   final List<_UserAchievement> _records = [];
+
+  /// Актуальный id пользователя из глобального состояния.
+  int? get _userId => AuthState.id;
 
   @override
   void initState() {
@@ -47,9 +52,12 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   // ЗАГРУЗКА ЗАПИСЕЙ С СЕРВЕРА
   // ============================================
   Future<void> _loadRecords() async {
+    final userId = _userId;
+    if (userId == null) return;
+
     try {
       final response = await http.get(
-        Uri.parse('${AchievementsScreen._baseUrl}/achievements?user_id=${AchievementsScreen._userId}'),
+        Uri.parse('$_baseUrl/achievements?user_id=$userId'),
       );
       if (response.statusCode != 200) return;
 
@@ -71,6 +79,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         );
       }
 
+      if (!mounted) return;
       setState(() {
         _records
           ..clear()
@@ -85,6 +94,9 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   // ДОБАВЛЕНИЕ ЗАПИСИ (с отправкой на сервер)
   // ============================================
   Future<void> _addRecord() async {
+    final userId = _userId;
+    if (userId == null) return;
+
     final record = await showModalBottomSheet<_UserAchievement>(
       context: context,
       isScrollControlled: true,
@@ -105,10 +117,10 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     try {
       final meta = _AchievementTypeMeta.values[record.type]!;
       final response = await http.post(
-        Uri.parse('${AchievementsScreen._baseUrl}/achievements'),
+        Uri.parse('$_baseUrl/achievements'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'user_id': AchievementsScreen._userId,
+          'user_id': userId,
           'type': meta.apiName,
           'value': record.value,
         }),
@@ -127,9 +139,13 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   Future<void> _removeRecord(int index) async {
     final record = _records[index];
     if (record.id != null) {
-      await http.delete(
-        Uri.parse('${AchievementsScreen._baseUrl}/achievements/${record.id}'),
-      );
+      try {
+        await http.delete(
+          Uri.parse('$_baseUrl/achievements/${record.id}'),
+        );
+      } catch (e) {
+        print('ACHIEVEMENTS DELETE ERROR: $e');
+      }
     }
     await _loadRecords();
   }
