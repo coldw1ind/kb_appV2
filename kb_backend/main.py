@@ -568,6 +568,27 @@ def send_to_director(period_id: int):
         cur.close()
         conn.close()
 
+
+@app.post("/periods/{period_id}/close-wishes")
+def close_wishes(period_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            UPDATE schedule_periods
+            SET status = 'manager_review'
+            WHERE id = %s
+            """,
+            (period_id,),
+        )
+        conn.commit()
+        return {"message": "Набор пожеланий закрыт"}
+    finally:
+        cur.close()
+        conn.close()
+
+
 @app.post("/periods/{period_id}/publish")
 def publish_period(period_id: int):
     conn = get_connection()
