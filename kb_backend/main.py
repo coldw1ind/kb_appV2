@@ -175,7 +175,7 @@ def get_shifts():
     try:
         cur.execute(
             """
-            SELECT s.id, s.shift_date, s.start_time, s.end_time, s.role, u.username
+            SELECT s.id, s.shift_date, s.start_time, s.end_time, s.role, u.username, s.user_id
             FROM shifts s
             JOIN users u ON u.id = s.user_id
             ORDER BY s.shift_date, s.start_time
@@ -188,6 +188,7 @@ def get_shifts():
                 d = row["shift_date"]
                 shifts.append({
                     "id": row["id"],
+                    "user_id": row["user_id"],
                     "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
                     "time": f"{row['start_time']} – {row['end_time']}",
                     "role": row["role"],
@@ -197,6 +198,7 @@ def get_shifts():
                 d = row[1]
                 shifts.append({
                     "id": row[0],
+                    "user_id": row[6],
                     "date": d.isoformat() if hasattr(d, "isoformat") else str(d),
                     "time": f"{row[2]} – {row[3]}",
                     "role": row[4],
@@ -572,6 +574,29 @@ def publish_period(period_id: int):
     cur = conn.cursor()
     try:
         cur.execute(
+            "SELECT id, start_date, end_date FROM schedule_periods WHERE id = %s",
+            (period_id,),
+        )
+        period = cur.fetchone()
+        if period is None:
+            raise HTTPException(status_code=404, detail="Период не найден")
+
+        if isinstance(period, dict):
+            start_date = period["start_date"]
+            end_date = period["end_date"]
+        else:
+            start_date = period[1]
+            end_date = period[2]
+
+        cur.execute(
+            """
+            DELETE FROM shifts
+            WHERE shift_date BETWEEN %s AND %s
+            """,
+            (start_date, end_date),
+        )
+
+        cur.execute(
             """
             INSERT INTO shifts (user_id, shift_date, start_time, end_time, role)
             SELECT user_id, shift_date, start_time, end_time, role
@@ -580,17 +605,17 @@ def publish_period(period_id: int):
             """,
             (period_id,),
         )
+
         cur.execute(
             """
             UPDATE schedule_periods
-            SET status = 'published',
-                published_at = NOW()
+            SET status = 'published', published_at = NOW()
             WHERE id = %s
             """,
             (period_id,),
         )
         conn.commit()
-        return {"ok": True, "status": "published"}
+        return {"message": "График опубликован"}
     finally:
         cur.close()
         conn.close()

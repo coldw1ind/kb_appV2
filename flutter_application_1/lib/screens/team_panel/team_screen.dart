@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_application_1/api/api_config.dart';
+import 'package:flutter_application_1/api/auth_state.dart';
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -12,7 +14,7 @@ class TeamScreen extends StatefulWidget {
 class _TeamScreenState extends State<TeamScreen> {
   bool _loading = true;
   String? _error;
-  List<dynamic> _people = [];
+  List<Map<String, dynamic>> _people = [];
   String _query = '';
   String _filter = 'Все';
 
@@ -30,19 +32,25 @@ class _TeamScreenState extends State<TeamScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/employees'),
+        Uri.parse('${ApiConfig.baseUrl}/employees'),
       );
-
       if (response.statusCode != 200) {
         throw Exception('Ошибка ${response.statusCode}');
       }
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final rows = (body['employees'] ?? []) as List<dynamic>;
+      final myBar = AuthState.bar;
 
-      final body = jsonDecode(response.body);
+      final people = rows
+          .cast<Map<String, dynamic>>()
+          .where((p) => myBar.isEmpty || (p['bar'] ?? '').toString() == myBar)
+          .toList();
+
       setState(() {
-        _people = body['employees'] as List<dynamic>;
+        _people = people;
         _loading = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _error = 'Не удалось загрузить команду';
         _loading = false;
@@ -53,7 +61,6 @@ class _TeamScreenState extends State<TeamScreen> {
   @override
   Widget build(BuildContext context) {
     final filters = ['Все', 'Официант', 'Бармен', 'Менеджер'];
-
     final list = _people.where((p) {
       final name = (p['username'] ?? '').toString();
       final role = (p['employee_role'] ?? '').toString();
@@ -63,114 +70,73 @@ class _TeamScreenState extends State<TeamScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF7F2),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Text(
-                'Наша команда',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
-              child: Text(
-                'Сотрудники из базы',
-                style: TextStyle(color: Color(0xFF78716C)),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextField(
-                onChanged: (v) => setState(() => _query = v),
-                decoration: InputDecoration(
-                  hintText: 'Найти сотрудника',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 42,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: filters.map((f) {
-                  final selected = _filter == f;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(f),
-                      selected: selected,
-                      onSelected: (_) => setState(() => _filter = f),
+      appBar: AppBar(title: const Text('Команда')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text(_error!))
+              : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AuthState.bar.isEmpty ? 'Все точки' : AuthState.bar,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            decoration: const InputDecoration(
+                              hintText: 'Поиск по имени',
+                              prefixIcon: Icon(Icons.search),
+                            ),
+                            onChanged: (value) => setState(() => _query = value),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            children: filters.map((f) {
+                              return ChoiceChip(
+                                label: Text(f),
+                                selected: _filter == f,
+                                onSelected: (_) => setState(() => _filter = f),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(child: Text(_error!))
-                      : list.isEmpty
-                          ? const Center(child: Text('Пока никто не зарегистрирован'))
+                    Expanded(
+                      child: list.isEmpty
+                          ? const Center(child: Text('Никого не нашли'))
                           : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                               itemCount: list.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 10),
-                              itemBuilder: (context, i) {
-                                final p = list[i];
+                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final p = list[index];
                                 final name = (p['username'] ?? '').toString();
                                 final role = (p['employee_role'] ?? '').toString();
-
-                                return Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
+                                final id = p['id'];
+                                final isMe = id == AuthState.id;
+                                return ListTile(
+                                  tileColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        child: Text(
-                                          name.isEmpty ? '?' : name[0].toUpperCase(),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              name,
-                                              style: const TextStyle(fontWeight: FontWeight.w700),
-                                            ),
-                                            Text(
-                                              role,
-                                              style: const TextStyle(color: Color(0xFF78716C)),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                  leading: CircleAvatar(
+                                    child: Text(name.isEmpty ? '?' : name[0].toUpperCase()),
                                   ),
+                                  title: Text(isMe ? '$name (вы)' : name),
+                                  subtitle: Text(role),
                                 );
                               },
                             ),
-            ),
-          ],
-        ),
-      ),
+                    ),
+                  ],
+                ),
     );
   }
 }

@@ -217,6 +217,12 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
     await _load();
   }
 
+  Future<void> _closeWishes() async {
+    final id = _period!['id'];
+    await http.post(Uri.parse('$_baseUrl/periods/$id/close-wishes'));
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -260,6 +266,11 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
                               ElevatedButton(
                                 onPressed: _drafts.isEmpty ? null : _publish,
                                 child: const Text('Утвердить график'),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton(
+                                onPressed: _closeWishes,
+                                child: const Text('Закрыть набор'),
                               ),
                             ],
                           ),
