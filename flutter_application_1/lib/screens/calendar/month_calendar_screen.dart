@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_application_1/screens/calendar/wishes_screen.dart';
 import 'package:flutter_application_1/screens/calendar/manager_schedule_screen.dart';
+import 'package:flutter_application_1/api/auth_state.dart';
 
 class CalendarScreen extends StatefulWidget {
   final VoidCallback onSwitchToWeek;
@@ -252,7 +253,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
           ),
 
-          // ↓↓↓ ЗАМЕНЕНО: теперь две кнопки ↓↓↓
+          // ↓↓↓ НОВЫЙ БЛОК КНОПОК ↓↓↓
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             child: Column(
@@ -271,27 +272,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     label: const Text('Моя смена'),
                   ),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ManagerScheduleScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.edit_calendar_outlined, size: 20),
-                    label: const Text('Сборка графика'),
+                if (AuthState.role == 'Менеджер' || AuthState.role == 'Управляющий') ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ManagerScheduleScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.edit_calendar_outlined, size: 20),
+                      label: const Text('Сборка графика'),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
-          // ↑↑↑ конец замены ↑↑↑
         ],
       ),
     );
