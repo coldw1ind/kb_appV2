@@ -18,11 +18,20 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
   List<Map<String, dynamic>> _wishes = [];
   List<Map<String, dynamic>> _drafts = [];
 
+  // --- Поля для создания периода ---
+  final _title = TextEditingController(text: 'График на неделю');
+  DateTime _start = DateTime.now();
+  DateTime _end = DateTime.now().add(const Duration(days: 6));
+
   @override
   void initState() {
     super.initState();
     _load();
   }
+
+  // Вынесенная функция форматирования даты
+  String _formatDate(DateTime day) =>
+      '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
 
   Future<void> _load() async {
     setState(() {
@@ -60,6 +69,22 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
         _error = 'Не удалось загрузить сетку';
         _loading = false;
       });
+    }
+  }
+
+  // --- Метод создания периода ---
+  Future<void> _createPeriod() async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/periods'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'title': _title.text.trim(),
+        'start_date': _formatDate(_start),
+        'end_date': _formatDate(_end),
+      }),
+    );
+    if (response.statusCode == 200) {
+      await _load();
     }
   }
 
@@ -214,7 +239,65 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
           : _error != null
               ? Center(child: Text(_error!))
               : _period == null
-                  ? const Center(child: Text('Нет открытого периода'))
+                  // ↓↓↓ НОВАЯ ФОРМА СОЗДАНИЯ ПЕРИОДА ↓↓↓
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Нет открытого периода',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _title,
+                            decoration: const InputDecoration(labelText: 'Название'),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(child: Text('С ${_formatDate(_start)}')),
+                              TextButton(
+                                onPressed: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    firstDate: DateTime(2024),
+                                    lastDate: DateTime(2030),
+                                    initialDate: _start,
+                                  );
+                                  if (picked != null) setState(() => _start = picked);
+                                },
+                                child: const Text('Начало'),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(child: Text('По ${_formatDate(_end)}')),
+                              TextButton(
+                                onPressed: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    firstDate: DateTime(2024),
+                                    lastDate: DateTime(2030),
+                                    initialDate: _end,
+                                  );
+                                  if (picked != null) setState(() => _end = picked);
+                                },
+                                child: const Text('Конец'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _createPeriod,
+                            child: const Text('Открыть набор'),
+                          ),
+                        ],
+                      ),
+                    )
+                  // ↑↑↑ КОНЕЦ ФОРМЫ ↑↑↑
                   : Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
