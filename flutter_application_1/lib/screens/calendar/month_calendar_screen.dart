@@ -1,13 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:table_calendar/table_calendar.dart';
+import 'package:flutter_application_1/api/api_config.dart';
+import 'package:flutter_application_1/api/auth_state.dart';
+import 'package:flutter_application_1/screens/calendar/manager_schedule_screen.dart';
 import 'package:flutter_application_1/screens/calendar/month_or_week.dart';
+import 'package:flutter_application_1/screens/calendar/wishes_screen.dart';
 import 'package:flutter_application_1/theme/app_colors.dart';
 import 'package:flutter_application_1/widgets/app_card.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter_application_1/screens/calendar/wishes_screen.dart';
-import 'package:flutter_application_1/screens/calendar/manager_schedule_screen.dart';
-import 'package:flutter_application_1/api/auth_state.dart';
 
 class CalendarScreen extends StatefulWidget {
   final VoidCallback onSwitchToWeek;
@@ -23,6 +24,7 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   Map<DateTime, List<Map<String, String>>> _events = {};
+  bool _loading = true;
 
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedDay = DateTime.now();
@@ -36,33 +38,53 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _loadShifts() async {
+    setState(() => _loading = true);
     try {
-      final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/shifts'),
+      final shiftsRes = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/shifts'),
       );
-      if (response.statusCode != 200) return;
+      final peopleRes = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/employees'),
+      );
+      if (shiftsRes.statusCode != 200) return;
 
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final barById = <String, String>{};
+      if (peopleRes.statusCode == 200) {
+        final people = jsonDecode(peopleRes.body) as Map<String, dynamic>;
+        for (final row in (people['employees'] ?? []) as List<dynamic>) {
+          final item = row as Map<String, dynamic>;
+          barById['${item['id']}'] = (item['bar'] ?? '').toString();
+        }
+      }
+
+      final body = jsonDecode(shiftsRes.body) as Map<String, dynamic>;
       final rows = (body['shifts'] ?? []) as List<dynamic>;
-
       final mapped = <DateTime, List<Map<String, String>>>{};
+      final myBar = AuthState.bar;
+      final myId = '${AuthState.id}';
 
       for (final row in rows) {
         final item = row as Map<String, dynamic>;
+        final userId = '${item['user_id']}';
+        if (myBar.isNotEmpty && barById[userId] != myBar) continue;
+
         final parsed = DateTime.parse(item['date'].toString());
         final key = DateTime.utc(parsed.year, parsed.month, parsed.day);
-
         mapped.putIfAbsent(key, () => []);
         mapped[key]!.add({
           'time': item['time'].toString(),
           'role': item['role'].toString(),
           'name': item['name'].toString(),
+          'mine': userId == myId ? '1' : '0',
         });
       }
 
+      if (!mounted) return;
       setState(() => _events = mapped);
     } catch (e) {
-      print('SHIFTS ERROR: $e');
+      debugPrint('SHIFTS ERROR: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -71,30 +93,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _events[key] ?? [];
   }
 
-  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    setState(() {
-      _selectedDate = selectedDay;
-      _focusedDay = focusedDay;
-    });
-  }
-
-  String _formatDate(DateTime day) {
-    const months = [
-      '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
-    ];
-    return '${day.day} ${months[day.month]}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final events = _getEventsForDay(_selectedDate);
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('График'),
-      ),
+      appBar: AppBar(title: const Text('График')),
       body: Column(
         children: [
           Padding(
@@ -106,192 +111,142 @@ class _CalendarScreenState extends State<CalendarScreen> {
               },
             ),
           ),
-          Container(
-            color: AppColors.surface,
-            padding: const EdgeInsets.only(bottom: 8),
-            child: TableCalendar(
-              focusedDay: _focusedDay,
-              firstDay: _firstDate,
-              lastDay: _lastDate,
-              selectedDayPredicate: (day) => isSameDay(_selectedDate, day),
-              onDaySelected: _onDaySelected,
-              onPageChanged: (focusedDay) {
-                _focusedDay = focusedDay;
-              },
-              eventLoader: (day) => _getEventsForDay(day),
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-                titleTextStyle: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.text,
-                ),
-                leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.teal),
-                rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.teal),
-              ),
-              calendarBuilders: CalendarBuilders(
-                singleMarkerBuilder: (_, date, _) {
-                  final isSelected = isSameDay(date, _selectedDate);
-                  return Container(
-                    width: 6,
-                    height: 6,
-                    margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.white : AppColors.coral,
-                      shape: BoxShape.circle,
-                    ),
-                  );
-                },
-              ),
-              calendarStyle: CalendarStyle(
-                defaultTextStyle: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 14,
-                ),
-                weekendTextStyle: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 14,
-                ),
-                todayDecoration: BoxDecoration(
-                  color: AppColors.teal.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                todayTextStyle: const TextStyle(
-                  color: AppColors.teal,
-                  fontWeight: FontWeight.w600,
-                ),
-                selectedDecoration: const BoxDecoration(
-                  color: AppColors.teal,
-                  shape: BoxShape.circle,
-                ),
-                selectedTextStyle: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-                markerDecoration: const BoxDecoration(
-                  color: AppColors.coral,
-                  shape: BoxShape.circle,
-                ),
-                markersMaxCount: 1,
-                markerSize: 6,
-                outsideDaysVisible: false,
-              ),
-              daysOfWeekStyle: const DaysOfWeekStyle(
-                weekdayStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                weekendStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.teal),
-                const SizedBox(width: 8),
-                Text(
-                  'Смены на ${_formatDate(_selectedDate)}',
-                  style: textTheme.titleLarge,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
           Expanded(
-            child: events.isEmpty
-                ? Center(
-                    child: Text(
-                      'В этот день смен нет',
-                      style: textTheme.bodySmall,
+            child: RefreshIndicator(
+              onRefresh: _loadShifts,
+              child: ListView(
+                children: [
+                  TableCalendar(
+                    focusedDay: _focusedDay,
+                    firstDay: _firstDate,
+                    lastDay: _lastDate,
+                    selectedDayPredicate: (day) => isSameDay(_selectedDate, day),
+                    eventLoader: _getEventsForDay,
+                    onDaySelected: (selected, focused) {
+                      setState(() {
+                        _selectedDate = selected;
+                        _focusedDay = focused;
+                      });
+                    },
+                    calendarStyle: CalendarStyle(
+                      markerDecoration: const BoxDecoration(
+                        color: AppColors.coral,
+                        shape: BoxShape.circle,
+                      ),
+                      selectedDecoration: const BoxDecoration(
+                        color: AppColors.teal,
+                        shape: BoxShape.circle,
+                      ),
+                      todayDecoration: BoxDecoration(
+                        color: AppColors.teal.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: events.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final event = events[index];
-                      return AppCard(
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: AppColors.teal.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (events.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'В этот день в твоём баре смен нет',
+                        style: textTheme.bodyMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    ...events.map((event) {
+                      final mine = event['mine'] == '1';
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                        child: AppCard(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: (mine ? AppColors.coral : AppColors.teal)
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  event['role'] == 'Бармен'
+                                      ? Icons.local_bar_outlined
+                                      : Icons.restaurant_outlined,
+                                  color: mine ? AppColors.coral : AppColors.teal,
+                                ),
                               ),
-                              child: Icon(
-                                event['role'] == 'Бармен'
-                                    ? Icons.local_bar_outlined
-                                    : Icons.restaurant_outlined,
-                                color: AppColors.teal,
-                                size: 22,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(event['time']!, style: textTheme.titleMedium),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      mine
+                                          ? '${event['role']} — ${event['name']} (вы)'
+                                          : '${event['role']} — ${event['name']}',
+                                      style: textTheme.bodyMedium,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(event['time']!, style: textTheme.titleMedium),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${event['role']} — ${event['name']}',
-                                    style: textTheme.bodyMedium,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right, color: AppColors.iconMuted),
-                          ],
+                            ],
+                          ),
                         ),
                       );
-                    },
-                  ),
-          ),
-
-          // ↓↓↓ НОВЫЙ БЛОК КНОПОК ↓↓↓
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const WishesScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.person_outline, size: 20),
-                    label: const Text('Моя смена'),
-                  ),
-                ),
-                if (AuthState.role == 'Менеджер' || AuthState.role == 'Управляющий') ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ManagerScheduleScreen(),
+                    }),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const WishesScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.person_outline, size: 20),
+                            label: const Text('Моя смена'),
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.edit_calendar_outlined, size: 20),
-                      label: const Text('Сборка графика'),
+                        ),
+                        if (AuthState.role == 'Менеджер' ||
+                            AuthState.role == 'Управляющий') ...[
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ManagerScheduleScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.edit_calendar_outlined, size: 20),
+                              label: const Text('Сборка графика'),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
-              ],
+              ),
             ),
           ),
         ],
