@@ -205,24 +205,6 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
     }
   }
 
-  Future<void> _sendToDirector() async {
-    final id = _period!['id'];
-    await http.post(Uri.parse('$_baseUrl/periods/$id/send-to-director'));
-    await _load();
-  }
-
-  Future<void> _publish() async {
-    final id = _period!['id'];
-    await http.post(Uri.parse('$_baseUrl/periods/$id/publish'));
-    await _load();
-  }
-
-  Future<void> _closeWishes() async {
-    final id = _period!['id'];
-    await http.post(Uri.parse('$_baseUrl/periods/$id/close-wishes'));
-    await _load();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -256,24 +238,39 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
+                          // ↓↓↓ БЛОК КНОПОК С ПРОВЕРКОЙ СТАТУСА ↓↓↓
                           Row(
                             children: [
-                              ElevatedButton(
-                                onPressed: _drafts.isEmpty ? null : _sendToDirector,
-                                child: const Text('Отправить управляющему'),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton(
-                                onPressed: _drafts.isEmpty ? null : _publish,
-                                child: const Text('Утвердить график'),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton(
-                                onPressed: _closeWishes,
-                                child: const Text('Закрыть набор'),
-                              ),
+                              if (_period!['status'] == 'collecting')
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    await http.post(Uri.parse(
+                                        '$_baseUrl/periods/${_period!['id']}/close-wishes'));
+                                    await _load();
+                                  },
+                                  child: const Text('Закрыть набор'),
+                                ),
+                              if (_period!['status'] == 'manager_review')
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    await http.post(Uri.parse(
+                                        '$_baseUrl/periods/${_period!['id']}/send-to-director'));
+                                    await _load();
+                                  },
+                                  child: const Text('Отправить управляющему'),
+                                ),
+                              if (_period!['status'] == 'director_review')
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    await http.post(Uri.parse(
+                                        '$_baseUrl/periods/${_period!['id']}/publish'));
+                                    await _load();
+                                  },
+                                  child: const Text('Утвердить график'),
+                                ),
                             ],
                           ),
+                          // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
                         ],
                       ),
                     ),
@@ -303,11 +300,18 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
               final draft = _draftFor(userId, date);
               return DataCell(
                 InkWell(
-                  onTap: () => _editCell(
-                    userId,
-                    person['username'].toString(),
-                    date,
-                  ),
+                  onTap: () {
+                    final status = _period?['status'];
+                    if (status != 'manager_review' && status != 'director_review') {
+                      return;
+                    }
+                    
+                    _editCell(
+                      userId,
+                      person['username'].toString(),
+                      date,
+                    );
+                  },
                   child: Container(
                     alignment: Alignment.center,
                     color: _cellColor(wish, draft),

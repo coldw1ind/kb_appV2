@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:table_calendar/table_calendar.dart';
+import 'package:flutter_application_1/api/api_config.dart';
 import 'package:flutter_application_1/api/auth_state.dart';
 
 class WishesScreen extends StatefulWidget {
@@ -11,13 +13,12 @@ class WishesScreen extends StatefulWidget {
 }
 
 class _WishesScreenState extends State<WishesScreen> {
-  static const _baseUrl = 'http://127.0.0.1:8000';
-  final _userId = AuthState.id;
-
   bool _loading = true;
   String? _error;
   Map<String, dynamic>? _period;
-  final Map<String, String> _wishes = {};
+  Map<String, String> _wishes = {};
+  DateTime _focused = DateTime.now();
+  DateTime _selected = DateTime.now();
 
   @override
   void initState() {
@@ -25,20 +26,21 @@ class _WishesScreenState extends State<WishesScreen> {
     _load();
   }
 
+  String _key(DateTime day) =>
+      '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
+    final userId = AuthState.id;
+    if (userId == null) {
+      setState(() {
+        _error = 'Сначала войди';
+        _loading = false;
+      });
+      return;
+    }
     try {
-      final periodRes = await http.get(Uri.parse('$_baseUrl/periods/current'));
-      if (periodRes.statusCode != 200) {
-        throw Exception('period ${periodRes.statusCode}');
-      }
-
-      final periodBody = jsonDecode(periodRes.body) as Map<String, dynamic>;
-      final period = periodBody['period'] as Map<String, dynamic>?;
+      final periodRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/periods/current'));
+      final period = (jsonDecode(periodRes.body) as Map)['period'];
       if (period == null) {
         setState(() {
           _period = null;
@@ -46,157 +48,122 @@ class _WishesScreenState extends State<WishesScreen> {
         });
         return;
       }
-
+      final id = period['id'];
       final wishesRes = await http.get(
-        Uri.parse(
-          '$_baseUrl/wishes?period_id=${period['id']}&user_id=$_userId',
-        ),
+        Uri.parse('${ApiConfig.baseUrl}/wishes?period_id=$id&user_id=$userId'),
       );
-      if (wishesRes.statusCode != 200) {
-        throw Exception('wishes ${wishesRes.statusCode}');
-      }
-
-      final wishesBody = jsonDecode(wishesRes.body) as Map<String, dynamic>;
-      final rows = (wishesBody['wishes'] ?? []) as List<dynamic>;
-
-      _wishes.clear();
+      final rows = ((jsonDecode(wishesRes.body)['wishes'] ?? []) as List);
+      final mapped = <String, String>{};
       for (final row in rows) {
         final item = row as Map<String, dynamic>;
-        _wishes[item['wish_date'].toString()] = item['wish_type'].toString();
+        mapped[item['wish_date'].toString().substring(0, 10)] =
+            item['wish_type'].toString();
       }
-
+      final start = DateTime.parse(period['start_date'].toString());
       setState(() {
-        _period = period;
+        _period = period.cast<String, dynamic>();
+        _wishes = mapped;
+        _focused = start;
+        _selected = start;
         _loading = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
-        _error = 'Не удалось загрузить пожелания';
+        _error = 'Не удалось загрузить период';
         _loading = false;
       });
     }
-  }
-
-  List<DateTime> _days() {
-    final start = DateTime.parse(_period!['start_date'].toString());
-    final end = DateTime.parse(_period!['end_date'].toString());
-    return [
-      for (var d = start;
-          !d.isAfter(end);
-          d = d.add(const Duration(days: 1)))
-        DateTime(d.year, d.month, d.day),
-    ];
   }
 
   Future<void> _setWish(DateTime day, String type) async {
-    final key = day.toIso8601String().split('T').first;
-    final old = _wishes[key];
-
+    final period = _period;
+    final userId = AuthState.id;
+    if (period == null || userId == null) return;
+    if (period['status'] != 'collecting') return;
+    final key = _key(day);
     setState(() => _wishes[key] = type);
-
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/wishes'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'period_id': _period!['id'],
-          'user_id': _userId,
-          'wish_date': key,
-          'wish_type': type,
-        }),
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/wishes'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'period_id': period['id'],
+        'user_id': userId,
+        'wish_date': key,
+        'wish_type': type,
+      }),
+    );
+    if (response.statusCode != 200 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не сохранилось')),
       );
-      if (response.statusCode != 200) {
-        setState(() {
-          if (old == null) {
-            _wishes.remove(key);
-          } else {
-            _wishes[key] = old;
-          }
-        });
-      }
-    } catch (_) {
-      setState(() {
-        if (old == null) {
-          _wishes.remove(key);
-        } else {
-          _wishes[key] = old;
-        }
-      });
     }
-  }
-
-  String _label(DateTime day) {
-    const names = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    return '${names[day.weekday]}  ${day.day}.${day.month}';
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null) {
+      return Scaffold(body: Center(child: Text(_error!)));
+    }
+    if (_period == null) {
+      return const Scaffold(body: Center(child: Text('Набор пожеланий закрыт')));
+    }
+
+    final start = DateTime.parse(_period!['start_date'].toString());
+    final end = DateTime.parse(_period!['end_date'].toString());
+    final open = _period!['status'] == 'collecting';
+    final selectedType = _wishes[_key(_selected)];
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Пожелания')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : _period == null
-                  ? const Center(child: Text('Набор пожеланий закрыт'))
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                      children: [
-                        Text(
-                          _period!['title'].toString(),
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text('Отметь дни, когда хочешь или не можешь выйти'),
-                        const SizedBox(height: 16),
-                        ..._days().map((day) {
-                          final key = day.toIso8601String().split('T').first;
-                          final current = _wishes[key];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _label(day),
-                                  style: const TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    ChoiceChip(
-                                      label: const Text('Хочу'),
-                                      selected: current == 'want',
-                                      onSelected: (_) => _setWish(day, 'want'),
-                                    ),
-                                    ChoiceChip(
-                                      label: const Text('Могу'),
-                                      selected: current == 'can',
-                                      onSelected: (_) => _setWish(day, 'can'),
-                                    ),
-                                    ChoiceChip(
-                                      label: const Text('Не могу'),
-                                      selected: current == 'off',
-                                      onSelected: (_) => _setWish(day, 'off'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
+      appBar: AppBar(title: Text(_period!['title'].toString())),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(open ? 'Отметь дни' : 'Набор закрыт, правки смотрит менеджер'),
+          const SizedBox(height: 8),
+          TableCalendar(
+            firstDay: start,
+            lastDay: end,
+            focusedDay: _focused,
+            selectedDayPredicate: (day) => isSameDay(day, _selected),
+            onDaySelected: (selected, focused) {
+              setState(() {
+                _selected = selected;
+                _focused = focused;
+              });
+            },
+            eventLoader: (day) {
+              final type = _wishes[_key(day)];
+              return type == null ? [] : [type];
+            },
+          ),
+          const SizedBox(height: 16),
+          Text('Выбран ${_key(_selected)}'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Хочу'),
+                selected: selectedType == 'want',
+                onSelected: open ? (_) => _setWish(_selected, 'want') : null,
+              ),
+              ChoiceChip(
+                label: const Text('Могу'),
+                selected: selectedType == 'can',
+                onSelected: open ? (_) => _setWish(_selected, 'can') : null,
+              ),
+              ChoiceChip(
+                label: const Text('Не могу'),
+                selected: selectedType == 'off',
+                onSelected: open ? (_) => _setWish(_selected, 'off') : null,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

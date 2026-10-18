@@ -666,10 +666,8 @@ def publish_period(period_id: int):
             end_date = period[2]
             status = period[3]
 
-        # ↓↓↓ ДОБАВЛЕНА ПРОВЕРКА СТАТУСА ↓↓↓
         if status != "director_review":
             raise HTTPException(status_code=400, detail="График ещё не у управляющего")
-        # ↑↑↑ КОНЕЦ ПРОВЕРКИ ↑↑↑
 
         cur.execute(
             """
