@@ -347,6 +347,40 @@ class PeriodData(BaseModel):
     end_date: date
     created_by: int
 
+class PeriodData(BaseModel):
+    title: str
+    start_date: date
+    end_date: date
+
+@app.post("/periods")
+def create_period(data: PeriodData):
+    if data.end_date < data.start_date:
+        raise HTTPException(status_code=400, detail="Конец раньше начала")
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO schedule_periods (title, start_date, end_date, status)
+            VALUES (%s, %s, %s, 'collecting')
+            RETURNING id
+            """,
+            (data.title, data.start_date, data.end_date),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        period_id = row["id"] if isinstance(row, dict) else row[0]
+        return {"id": period_id}
+    finally:
+        cur.close()
+        conn.close()
+
+def _period_status(cur, period_id: int) -> str | None:
+    cur.execute("SELECT status FROM schedule_periods WHERE id = %s", (period_id,))
+    row = cur.fetchone()
+    if row is None:
+        return None
+    return row["status"] if isinstance(row, dict) else row[0]
 
 class WishData(BaseModel):
     period_id: int
@@ -401,6 +435,12 @@ def save_wish(data: WishData):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        status = _period_status(cur, data.period_id)
+        if status is None:
+            raise HTTPException(status_code=404, detail="Период не найден")
+        if status != "collecting":
+            raise HTTPException(status_code=400, detail="Набор пожеланий закрыт")
+
         cur.execute(
             """
             INSERT INTO shift_wishes (period_id, user_id, wish_date, wish_type, comment)
@@ -415,7 +455,6 @@ def save_wish(data: WishData):
     finally:
         cur.close()
         conn.close()
-
 
 @app.get("/wishes")
 def get_wishes(period_id: int, user_id: int | None = None):
@@ -484,6 +523,10 @@ def add_draft_shift(data: DraftShiftData):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        status = _period_status(cur, data.period_id)
+        if status not in ("manager_review", "director_review"):
+            raise HTTPException(status_code=400, detail="Сейчас нельзя править черновик")
+
         cur.execute(
             """
             INSERT INTO draft_shifts
@@ -554,6 +597,12 @@ def send_to_director(period_id: int):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        status = _period_status(cur, period_id)
+        if status is None:
+            raise HTTPException(status_code=404, detail="Период не найден")
+        if status != "manager_review":
+            raise HTTPException(status_code=400, detail="Сначала закрой набор")
+
         cur.execute(
             """
             UPDATE schedule_periods
@@ -574,6 +623,12 @@ def close_wishes(period_id: int):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        status = _period_status(cur, period_id)
+        if status is None:
+            raise HTTPException(status_code=404, detail="Период не найден")
+        if status != "manager_review":
+            raise HTTPException(status_code=400, detail="Сначала закрой набор")
+
         cur.execute(
             """
             UPDATE schedule_periods
@@ -595,7 +650,7 @@ def publish_period(period_id: int):
     cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT id, start_date, end_date FROM schedule_periods WHERE id = %s",
+            "SELECT id, start_date, end_date, status FROM schedule_periods WHERE id = %s",
             (period_id,),
         )
         period = cur.fetchone()
@@ -605,9 +660,16 @@ def publish_period(period_id: int):
         if isinstance(period, dict):
             start_date = period["start_date"]
             end_date = period["end_date"]
+            status = period["status"]
         else:
             start_date = period[1]
             end_date = period[2]
+            status = period[3]
+
+        # ↓↓↓ ДОБАВЛЕНА ПРОВЕРКА СТАТУСА ↓↓↓
+        if status != "director_review":
+            raise HTTPException(status_code=400, detail="График ещё не у управляющего")
+        # ↑↑↑ КОНЕЦ ПРОВЕРКИ ↑↑↑
 
         cur.execute(
             """
