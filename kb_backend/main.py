@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from database import get_connection
-from datetime import date
+from datetime import date, timedelta
 
 app = FastAPI(title="App API")
 
@@ -422,6 +422,37 @@ def get_current_period():
         conn.close()
 
 
+# ============================================
+# ДОБАВЛЕНА ФУНКЦИЯ АВТОСОЗДАНИЯ ПЕРИОДА
+# ============================================
+def _ensure_open_period(cur):
+    cur.execute(
+        """
+        SELECT id, start_date, end_date, status
+        FROM schedule_periods
+        WHERE status = 'collecting'
+        ORDER BY id DESC
+        LIMIT 1
+        """
+    )
+    row = cur.fetchone()
+    if row is not None:
+        return row["id"] if isinstance(row, dict) else row[0]
+
+    start = date.today()
+    end = start + timedelta(days=60)
+    cur.execute(
+        """
+        INSERT INTO schedule_periods (title, start_date, end_date, status)
+        VALUES (%s, %s, %s, 'collecting')
+        RETURNING id
+        """,
+        ("Пожелания", start, end),
+    )
+    created = cur.fetchone()
+    return created["id"] if isinstance(created, dict) else created[0]
+
+
 @app.post("/wishes")
 def save_wish(data: WishData):
     if data.wish_type not in ("want", "can", "off"):
@@ -430,11 +461,9 @@ def save_wish(data: WishData):
     conn = get_connection()
     cur = conn.cursor()
     try:
-        status = _period_status(cur, data.period_id)
-        if status is None:
-            raise HTTPException(status_code=404, detail="Период не найден")
-        if status != "collecting":
-            raise HTTPException(status_code=400, detail="Набор пожеланий закрыт")
+        # ↓↓↓ ИЗМЕНЕНО: период создается/берется автоматически ↓↓↓
+        period_id = _ensure_open_period(cur)
+        # ↑↑↑ КОНЕЦ ИЗМЕНЕНИЯ ↑↑↑
 
         cur.execute(
             """
@@ -443,7 +472,7 @@ def save_wish(data: WishData):
             ON CONFLICT (period_id, user_id, wish_date)
             DO UPDATE SET wish_type = EXCLUDED.wish_type, comment = EXCLUDED.comment
             """,
-            (data.period_id, data.user_id, data.wish_date, data.wish_type, data.comment),
+            (period_id, data.user_id, data.wish_date, data.wish_type, data.comment),
         )
         conn.commit()
         return {"ok": True}
