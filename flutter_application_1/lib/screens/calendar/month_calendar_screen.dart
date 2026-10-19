@@ -93,19 +93,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final userId = AuthState.id;
     if (userId == null) return;
 
-    final periodRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/periods/current'));
-    if (periodRes.statusCode != 200) return;
-    final period = (jsonDecode(periodRes.body) as Map)['period'];
-    if (period == null || period['status'] != 'collecting') return;
-
-    final start = DateTime.parse(period['start_date'].toString());
-    final end = DateTime.parse(period['end_date'].toString());
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day);
+    final end = start.add(const Duration(days: 60));
     final date = DateTime(day.year, day.month, day.day);
-    if (date.isBefore(DateTime(start.year, start.month, start.day)) ||
-        date.isAfter(DateTime(end.year, end.month, end.day))) {
+    if (date.isBefore(start) || date.isAfter(end)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Этот день вне текущего набора')),
+        const SnackBar(content: Text('Можно отметить только ближайшие 60 дней')),
       );
       return;
     }
@@ -134,10 +129,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       Uri.parse('${ApiConfig.baseUrl}/wishes'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'period_id': period['id'],
         'user_id': userId,
         'wish_date': key,
         'wish_type': type,
+        'period_id': 0,
       }),
     );
     if (!mounted) return;
