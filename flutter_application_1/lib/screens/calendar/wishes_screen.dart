@@ -138,6 +138,11 @@ class _WishesScreenState extends State<WishesScreen> {
               final type = _wishes[_key(day)];
               return type == null ? [] : [type];
             },
+            // ↓↓↓ ДОБАВЛЕНО ↓↓↓
+            headerStyle: const HeaderStyle(
+              formatButtonVisible: false,
+            ),
+            // ↑↑↑ КОНЕЦ ↑↑↑
           ),
           const SizedBox(height: 16),
           Text('Выбран ${_key(_selected)}'),

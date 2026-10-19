@@ -26,7 +26,6 @@ class AchievementsScreen extends StatefulWidget {
 class _AchievementsScreenState extends State<AchievementsScreen> {
   static const _baseUrl = 'http://127.0.0.1:8000';
 
-  final int _shiftStreak = 5;
   final List<_UserAchievement> _records = [];
 
   /// Актуальный id пользователя из глобального состояния.
@@ -178,10 +177,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               children: [
-                _StreakCard(streak: _shiftStreak),
-                
-                // ↓↓↓ ДОБАВЛЕННЫЙ БЛОК С КАРТОЧКАМИ ЗА СЕГОДНЯ ↓↓↓
-                const SizedBox(height: 16),
+                // ↓↓↓ БЛОК С КАРТОЧКАМИ ЗА СЕГОДНЯ ↓↓↓
                 Row(
                   children: [
                     Expanded(
@@ -320,79 +316,6 @@ class _AchievementTypeMeta {
       color: AppColors.teal,
     ),
   };
-}
-
-// ============================================
-// КАРТОЧКА СТРИКА
-// ============================================
-class _StreakCard extends StatelessWidget {
-  final int streak;
-
-  const _StreakCard({required this.streak});
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      radius: AppRadius.xl,
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.coral.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: const Icon(
-              Icons.local_fire_department,
-              color: AppColors.coral,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Стрик смен', style: textTheme.titleMedium),
-                const SizedBox(height: 2),
-                Text(
-                  'Смены подряд без выходного',
-                  style: textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$streak',
-                style: textTheme.headlineMedium?.copyWith(color: AppColors.coral),
-              ),
-              Text(
-                _streakLabel(streak),
-                style: textTheme.labelSmall?.copyWith(color: AppColors.coral),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _streakLabel(int count) {
-    final mod10 = count % 10;
-    final mod100 = count % 100;
-    if (mod10 == 1 && mod100 != 11) return 'смена подряд';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-      return 'смены подряд';
-    }
-    return 'смен подряд';
-  }
 }
 
 // ============================================
@@ -586,7 +509,7 @@ class _AddAchievementSheetState extends State<_AddAchievementSheet> {
 }
 
 // ============================================
-// КАРТОЧКА "СЕГОДНЯ" (добавлена в конец)
+// КАРТОЧКА "СЕГОДНЯ"
 // ============================================
 class _TodayCard extends StatelessWidget {
   const _TodayCard({required this.title, required this.value});

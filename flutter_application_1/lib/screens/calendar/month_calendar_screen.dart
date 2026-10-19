@@ -88,6 +88,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // ↓↓↓ ДОБАВЛЕННЫЙ МЕТОД ↓↓↓
+  Future<void> _askWish(DateTime day) async {
+    final userId = AuthState.id;
+    if (userId == null) return;
+
+    final periodRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/periods/current'));
+    if (periodRes.statusCode != 200) return;
+    final period = (jsonDecode(periodRes.body) as Map)['period'];
+    if (period == null || period['status'] != 'collecting') return;
+
+    final start = DateTime.parse(period['start_date'].toString());
+    final end = DateTime.parse(period['end_date'].toString());
+    final date = DateTime(day.year, day.month, day.day);
+    if (date.isBefore(DateTime(start.year, start.month, start.day)) ||
+        date.isAfter(DateTime(end.year, end.month, end.day))) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Этот день вне текущего набора')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(title: const Text('Хочу'), onTap: () => Navigator.pop(context, 'want')),
+              ListTile(title: const Text('Могу'), onTap: () => Navigator.pop(context, 'can')),
+              ListTile(title: const Text('Не могу'), onTap: () => Navigator.pop(context, 'off')),
+            ],
+          ),
+        );
+      },
+    );
+    if (type == null) return;
+
+    final key =
+        '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/wishes'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'period_id': period['id'],
+        'user_id': userId,
+        'wish_date': key,
+        'wish_type': type,
+      }),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(response.statusCode == 200 ? 'Сохранено' : 'Не сохранилось')),
+    );
+  }
+  // ↑↑↑ КОНЕЦ ДОБАВЛЕННОГО МЕТОДА ↑↑↑
+
   List<Map<String, String>> _getEventsForDay(DateTime day) {
     final key = DateTime.utc(day.year, day.month, day.day);
     return _events[key] ?? [];
@@ -122,12 +181,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     lastDay: _lastDate,
                     selectedDayPredicate: (day) => isSameDay(_selectedDate, day),
                     eventLoader: _getEventsForDay,
-                    onDaySelected: (selected, focused) {
+                    // ↓↓↓ ИЗМЕНЁННЫЙ onDaySelected ↓↓↓
+                    onDaySelected: (selected, focused) async {
                       setState(() {
                         _selectedDate = selected;
                         _focusedDay = focused;
                       });
+                      await _askWish(selected);
                     },
+                    // ↑↑↑ КОНЕЦ ИЗМЕНЕНИЯ ↑↑↑
+                    headerStyle: const HeaderStyle(
+                      formatButtonVisible: false,
+                    ),
                     calendarStyle: CalendarStyle(
                       markerDecoration: const BoxDecoration(
                         color: AppColors.coral,
