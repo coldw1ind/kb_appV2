@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/api_config.dart';
 import 'package:flutter_application_1/api/auth_state.dart';
+import 'package:flutter_application_1/screens/team_panel/person_screen.dart';
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -131,6 +132,25 @@ class _TeamScreenState extends State<TeamScreen> {
                                   ),
                                   title: Text(isMe ? '$name (вы)' : name),
                                   subtitle: Text(role),
+                                  // ↓↓↓ ДОБАВЛЕН onTap ↓↓↓
+                                  onTap: () {
+                                    final rawId = p['id'];
+                                    final id = rawId is int ? rawId : int.tryParse('$rawId');
+                                    if (id == null) return;
+                                    
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => PersonScreen(
+                                          userId: id,
+                                          name: name,
+                                          role: role,
+                                          bar: (p['bar'] ?? AuthState.bar).toString(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  // ↑↑↑ КОНЕЦ onTap ↑↑↑
                                 );
                               },
                             ),
