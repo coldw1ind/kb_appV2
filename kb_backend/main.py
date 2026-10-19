@@ -347,11 +347,6 @@ class PeriodData(BaseModel):
     end_date: date
     created_by: int
 
-class PeriodData(BaseModel):
-    title: str
-    start_date: date
-    end_date: date
-
 @app.post("/periods")
 def create_period(data: PeriodData):
     if data.end_date < data.start_date:
@@ -697,6 +692,30 @@ def publish_period(period_id: int):
         )
         conn.commit()
         return {"message": "График опубликован"}
+    finally:
+        cur.close()
+        conn.close()
+
+class ProgressData(BaseModel):
+    user_id: int
+    lessons_done: int
+
+@app.post("/courses/{course_id}/progress")
+def save_progress(course_id: int, data: ProgressData):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO course_progress (user_id, course_id, lessons_done)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id, course_id)
+            DO UPDATE SET lessons_done = EXCLUDED.lessons_done
+            """,
+            (data.user_id, course_id, data.lessons_done),
+        )
+        conn.commit()
+        return {"ok": True}
     finally:
         cur.close()
         conn.close()

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/auth_state.dart';
+import 'package:flutter_application_1/screens/learning_panel/course_screen.dart';
 
 const _bg = Color(0xFFFFF7F2);
 const _ink = Color(0xFF1C1917);
@@ -189,36 +190,52 @@ class _LearningScreenState extends State<LearningScreen> {
                   ..._courses.map((c) {
                     final done = (c['lessons_done'] as num).toInt();
                     final total = (c['lessons_total'] as num).toInt();
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c['title'].toString(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CourseScreen(
+                              courseId: c['id'] as int,
+                              title: c['title'].toString(),
+                              total: total,
+                              done: done,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$done из $total уроков',
-                            style: const TextStyle(color: _muted, fontSize: 12),
-                          ),
-                          const SizedBox(height: 10),
-                          LinearProgressIndicator(
-                            value: total == 0 ? 0 : done / total,
-                            minHeight: 8,
-                            backgroundColor: const Color(0xFFE7E0DA),
-                            color: _accent,
-                          ),
-                        ],
+                        ).then((_) => _load());
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c['title'].toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$done из $total уроков',
+                              style: const TextStyle(color: _muted, fontSize: 12),
+                            ),
+                            const SizedBox(height: 10),
+                            LinearProgressIndicator(
+                              value: total == 0 ? 0 : done / total,
+                              minHeight: 8,
+                              backgroundColor: const Color(0xFFE7E0DA),
+                              color: _accent,
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }),

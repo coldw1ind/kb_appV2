@@ -39,6 +39,20 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   }
 
   // ============================================
+  // ПОДСЧЁТ СУММЫ ЗА СЕГОДНЯ
+  // ============================================
+  double _todaySum(AchievementType type) {
+    final now = DateTime.now();
+    return _records
+        .where((r) =>
+            r.type == type &&
+            r.createdAt.year == now.year &&
+            r.createdAt.month == now.month &&
+            r.createdAt.day == now.day)
+        .fold(0.0, (sum, r) => sum + r.value);
+  }
+
+  // ============================================
   // ПРЕОБРАЗОВАНИЕ API-СТРОКИ В ENUM
   // ============================================
   AchievementType? _typeFromApi(String raw) {
@@ -165,7 +179,29 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               children: [
                 _StreakCard(streak: _shiftStreak),
-                const SizedBox(height: 20),
+                
+                // ↓↓↓ ДОБАВЛЕННЫЙ БЛОК С КАРТОЧКАМИ ЗА СЕГОДНЯ ↓↓↓
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _TodayCard(
+                        title: 'Чаевые сегодня',
+                        value: '${_todaySum(AchievementType.tips).toStringAsFixed(0)} ₽',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _TodayCard(
+                        title: 'Выручка сегодня',
+                        value: '${_todaySum(AchievementType.revenue).toStringAsFixed(0)} ₽',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
+
                 Text('Мои записи', style: textTheme.titleLarge),
                 const SizedBox(height: 4),
                 Text(
@@ -541,6 +577,41 @@ class _AddAchievementSheetState extends State<_AddAchievementSheet> {
             child: ElevatedButton(
               onPressed: _submit,
               child: const Text('Сохранить'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================
+// КАРТОЧКА "СЕГОДНЯ" (добавлена в конец)
+// ============================================
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({required this.title, required this.value});
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 6),
+          Text(
+            value, 
+            style: const TextStyle(
+              fontSize: 22, 
+              fontWeight: FontWeight.w800,
+              color: AppColors.text,
             ),
           ),
         ],
