@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_application_1/api/auth_state.dart';
 
 class ManagerScheduleScreen extends StatefulWidget {
   const ManagerScheduleScreen({super.key});
@@ -218,10 +219,12 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                                 width: double.infinity,
                                 height: 52,
                                 child: ElevatedButton(
-                                  onPressed: _drafts.isEmpty ? null : _sendToDirector,
+                                  onPressed: _wishes.isEmpty ? null : _sendToDirector,
                                   child: const Text('Отправить управляющему'),
                                 ),
                               ),
+                              if (_period?['status'] == 'director_review' &&
+                                  AuthState.role == 'Управляющий') ...[
                               const SizedBox(height: 10),
                               SizedBox(
                                 width: double.infinity,
@@ -231,6 +234,7 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                                   child: const Text('Утвердить график'),
                                 ),
                               ),
+                              ],
                             ],
                           ),
                         ),
