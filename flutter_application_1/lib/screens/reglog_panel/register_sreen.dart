@@ -23,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Официант',
     'Бармен',
     'Менеджер',
+    'Управляющий',
   ];
   List<String> _bars = const [
     'Дачный пр., 17к2',
