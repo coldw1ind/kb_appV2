@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/auth_state.dart';
+import 'package:flutter_application_1/screens/reglog_panel/login_screen.dart';
 
 class ManagerScheduleScreen extends StatefulWidget {
   const ManagerScheduleScreen({super.key});
@@ -72,8 +73,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
 
   String _wishLabel(String type) {
     switch (type) {
-      case 'want':
-        return 'Хочет';
       case 'can':
         return 'Может';
       case 'off':
@@ -109,15 +108,15 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     final response = await http.post(
       Uri.parse('$_baseUrl/periods/$id/send-to-director'),
     );
-    if (response.statusCode == 200 && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Отправлено управляющему')),
-      );
-      await _load();
-    }
+    
+    if (!mounted) return;
+    final ok = response.statusCode == 200;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Отправлено управляющему' : response.body)),
+    );
+    if (ok) await _load();
   }
 
-  // ↓↓↓ ДОБАВЛЕНО ↓↓↓
   Future<void> _publish() async {
     final id = _period!['id'];
     final response = await http.post(
@@ -130,7 +129,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
       await _load();
     }
   }
-  // ↑↑↑ конец добавления ↑↑↑
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +141,23 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     final days = grouped.keys.toList()..sort();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Сборка графика')),
+      appBar: AppBar(
+        title: const Text('Сборка графика'),
+        // ↓↓↓ ДОБАВЛЕНА КНОПКА ВЫХОДА ↓↓↓
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              AuthState.clear();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+              );
+            },
+          ),
+        ],
+        // ↑↑↑ КОНЕЦ ДОБАВЛЕНИЯ ↑↑↑
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -210,35 +224,34 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                           ),
                         ),
 
-                        // ↓↓↓ ЗАМЕНЕНО: две кнопки вместо одной ↓↓↓
+                        // ↓↓↓ ЗАМЕНЕНО: НОВЫЙ БЛОК КНОПОК ↓↓↓
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                           child: Column(
                             children: [
-                              SizedBox(
-                                width: double.infinity,
-                                height: 52,
-                                child: ElevatedButton(
-                                  onPressed: _wishes.isEmpty ? null : _sendToDirector,
-                                  child: const Text('Отправить управляющему'),
+                              if (AuthState.role == 'Менеджер' && _period?['status'] != 'director_review')
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: ElevatedButton(
+                                    onPressed: _wishes.isEmpty ? null : _sendToDirector,
+                                    child: const Text('Отправить на согласование'),
+                                  ),
                                 ),
-                              ),
-                              if (_period?['status'] == 'director_review' &&
-                                  AuthState.role == 'Управляющий') ...[
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 52,
-                                child: OutlinedButton(
-                                  onPressed: _drafts.isEmpty ? null : _publish,
-                                  child: const Text('Утвердить график'),
+                              if (AuthState.role == 'Управляющий' &&
+                                  _period?['status'] == 'director_review')
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: ElevatedButton(
+                                    onPressed: _publish,
+                                    child: const Text('Подтвердить график'),
+                                  ),
                                 ),
-                              ),
-                              ],
                             ],
                           ),
                         ),
-                        // ↑↑↑ конец замены ↑↑↑
+                        // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
                       ],
                     ),
     );

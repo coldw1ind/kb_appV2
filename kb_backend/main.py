@@ -624,8 +624,29 @@ def send_to_director(period_id: int):
         status = _period_status(cur, period_id)
         if status is None:
             raise HTTPException(status_code=404, detail="Период не найден")
-        if status != "manager_review":
-            raise HTTPException(status_code=400, detail="Сначала закрой набор")
+        if status == "published":
+            raise HTTPException(status_code=400, detail="График уже утверждён")
+        if status == "director_review":
+            raise HTTPException(status_code=400, detail="Уже у управляющего")
+
+        cur.execute(
+            "SELECT COUNT(*) FROM draft_shifts WHERE period_id = %s",
+            (period_id,),
+        )
+        count_row = cur.fetchone()
+        count = count_row["count"] if isinstance(count_row, dict) else count_row[0]
+
+        if count == 0:
+            cur.execute(
+                """
+                INSERT INTO draft_shifts (period_id, user_id, shift_date, start_time, end_time, role)
+                SELECT w.period_id, w.user_id, w.wish_date, '10:00', '18:00', u.employee_role
+                FROM shift_wishes w
+                JOIN users u ON u.id = w.user_id
+                WHERE w.period_id = %s AND w.wish_type != 'off'
+                """,
+                (period_id,),
+            )
 
         cur.execute(
             """
