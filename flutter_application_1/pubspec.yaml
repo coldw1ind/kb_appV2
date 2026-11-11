@@ -37,6 +37,7 @@ dependencies:
   table_calendar: ^3.2.1
   http: ^1.2.2
   logging: ^1.2.0
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
@@ -90,3 +91,11 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+fonts:
+  - family: Inter
+    fonts:
+      - asset: assets/fonts/Inter-Regular.ttf
+      - asset: assets/fonts/Inter-Medium.ttf
+        weight: 500
+      - asset: assets/fonts/Inter-SemiBold.ttf
+        weight: 600

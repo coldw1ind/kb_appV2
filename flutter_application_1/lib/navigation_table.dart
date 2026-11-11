@@ -36,23 +36,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 35),
+            icon: Icon(Icons.home, size: 22),
             label: 'Главная',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book, size: 35),
+            icon: Icon(Icons.menu_book, size: 22),
             label: 'Обучение',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.star, size: 35),
+            icon: Icon(Icons.star, size: 22),
             label: 'Достижения',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today, size: 35),
+            icon: Icon(Icons.calendar_today, size: 22),
             label: 'График',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people, size: 35),
+            icon: Icon(Icons.people, size: 22),
             label: 'Команда',
           ),
         ],

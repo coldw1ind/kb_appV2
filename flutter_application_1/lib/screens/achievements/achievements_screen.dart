@@ -5,6 +5,7 @@ import 'package:flutter_application_1/widgets/app_card.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/auth_state.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 // ============================================
@@ -59,6 +60,11 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       if (entry.value.apiName == raw) return entry.key;
     }
     return null;
+  }
+
+  Future<void> _openKleek() async {
+    final uri = Uri.parse('https://tips.kleek.ru/');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   // ============================================
@@ -197,6 +203,21 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                 ),
                 const SizedBox(height: 16),
                 // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
+
+                // ↓↓↓ ДОБАВЛЕННЫЙ БЛОК С KLEEK ДЛЯ ОФИЦИАНТА ↓↓↓
+                if (AuthState.role == 'Официант') ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: _openKleek,
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: const Text('Открыть Kleek'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                // ↑↑↑ КОНЕЦ ДОБАВЛЕННОГО БЛОКА ↑↑↑
 
                 Text('Мои записи', style: textTheme.titleLarge),
                 const SizedBox(height: 4),

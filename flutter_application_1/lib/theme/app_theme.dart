@@ -3,101 +3,140 @@ import 'package:flutter_application_1/theme/app_colors.dart';
 
 class AppTheme {
   static ThemeData get light {
+    const text = TextTheme(
+      displaySmall: TextStyle(
+        fontSize: 40,
+        height: 1.1,
+        letterSpacing: -0.8,
+        fontWeight: FontWeight.w600,
+        color: AppColors.text,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 28,
+        height: 1.2,
+        letterSpacing: -0.4,
+        fontWeight: FontWeight.w600,
+        color: AppColors.text,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 20,
+        height: 1.3,
+        letterSpacing: -0.2,
+        fontWeight: FontWeight.w600,
+        color: AppColors.text,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 16,
+        height: 1.4,
+        fontWeight: FontWeight.w600,
+        color: AppColors.text,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 16,
+        height: 1.55,
+        color: AppColors.text,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 14,
+        height: 1.55,
+        color: AppColors.textMuted,
+      ),
+      bodySmall: TextStyle(
+        fontSize: 12,
+        height: 1.4,
+        color: AppColors.textHint,
+      ),
+    );
+
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      fontFamily: 'Inter',
       scaffoldBackgroundColor: AppColors.background,
       splashFactory: NoSplash.splashFactory,
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       colorScheme: const ColorScheme.light(
-        primary: AppColors.teal,
-        secondary: AppColors.coral,
-        surface: AppColors.surface,
+        primary: AppColors.accent,
         onPrimary: Colors.white,
-        onSecondary: Colors.white,
+        surface: AppColors.surface,
         onSurface: AppColors.text,
       ),
+      textTheme: text,
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         foregroundColor: AppColors.text,
         titleTextStyle: TextStyle(
-          color: AppColors.text,
+          fontSize: 20,
           fontWeight: FontWeight.w600,
-          fontSize: 18,
-        ),
-      ),
-      textTheme: const TextTheme(
-        headlineMedium: TextStyle(
-          fontSize: 26,
-          fontWeight: FontWeight.w700,
+          letterSpacing: -0.2,
           color: AppColors.text,
-        ),
-        titleLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.text,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: AppColors.text,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.text,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 13,
-          color: AppColors.textMuted,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 13,
-          color: AppColors.textHint,
-        ),
-        labelSmall: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.teal,
+          backgroundColor: AppColors.accent,
           foregroundColor: Colors.white,
           elevation: 0,
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          minimumSize: const Size.fromHeight(52),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.text,
+          side: const BorderSide(color: AppColors.line),
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.surfaceElevated,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.line),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          borderSide: const BorderSide(color: AppColors.teal, width: 2),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      cardTheme: CardThemeData(
+        color: AppColors.surfaceElevated,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        margin: EdgeInsets.zero,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.coral,
+        backgroundColor: AppColors.surfaceElevated,
+        selectedItemColor: AppColors.accent,
         unselectedItemColor: AppColors.textHint,
-        elevation: 8,
+        elevation: 0,
+        selectedLabelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontSize: 11),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.teal,
-        linearTrackColor: AppColors.line,
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
     );
   }
