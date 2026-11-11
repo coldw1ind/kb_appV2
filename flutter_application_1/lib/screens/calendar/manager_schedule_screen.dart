@@ -73,6 +73,8 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
 
   String _wishLabel(String type) {
     switch (type) {
+      case 'want':
+        return 'Хочет';
       case 'can':
         return 'Может';
       case 'off':
@@ -117,18 +119,20 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     if (ok) await _load();
   }
 
+  // ↓↓↓ ОБНОВЛЕНО: добавлено отображение ошибки ↓↓↓
   Future<void> _publish() async {
     final id = _period!['id'];
     final response = await http.post(
       Uri.parse('$_baseUrl/periods/$id/publish'),
     );
-    if (response.statusCode == 200 && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('График обновлён у всех')),
-      );
-      await _load();
-    }
+    if (!mounted) return;
+    final ok = response.statusCode == 200;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'График обновлён у всех' : response.body)),
+    );
+    if (ok) await _load();
   }
+  // ↑↑↑ КОНЕЦ ИЗМЕНЕНИЯ ↑↑↑
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +147,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Сборка графика'),
-        // ↓↓↓ ДОБАВЛЕНА КНОПКА ВЫХОДА ↓↓↓
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -156,7 +159,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
             },
           ),
         ],
-        // ↑↑↑ КОНЕЦ ДОБАВЛЕНИЯ ↑↑↑
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -223,8 +225,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                             }).toList(),
                           ),
                         ),
-
-                        // ↓↓↓ ЗАМЕНЕНО: НОВЫЙ БЛОК КНОПОК ↓↓↓
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                           child: Column(
@@ -251,7 +251,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                             ],
                           ),
                         ),
-                        // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
                       ],
                     ),
     );

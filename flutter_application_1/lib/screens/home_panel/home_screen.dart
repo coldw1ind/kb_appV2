@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/api_config.dart';
 import 'package:flutter_application_1/api/auth_state.dart';
+import 'package:flutter_application_1/screens/reglog_panel/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,7 +108,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final progress = _lessonsTotal == 0 ? 0.0 : _lessonsDone / _lessonsTotal;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Главная')),
+      appBar: AppBar(
+        title: const Text('Главная'),
+        // ↓↓↓ ДОБАВЛЕНА КНОПКА ВЫХОДА ↓↓↓
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              AuthState.clear();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+              );
+            },
+          ),
+        ],
+        // ↑↑↑ КОНЕЦ ДОБАВЛЕНИЯ ↑↑↑
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(

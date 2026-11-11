@@ -146,8 +146,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // ↓↓↓ ОБНОВЛЕНО: добавлен 'want' ↓↓↓
   String _wishLabel(String? type) {
     switch (type) {
+      case 'want':
+        return 'Хочу';
       case 'can':
         return 'Могу';
       case 'off':
@@ -157,9 +160,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // Цвет маркера для календаря
+  // ↓↓↓ ОБНОВЛЕНО: добавлен 'want' ↓↓↓
   Color? _wishColor(String? type) {
     switch (type) {
+      case 'want':
+        return Colors.orange;
       case 'can':
         return Colors.green;
       case 'off':
@@ -223,7 +228,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    // ↓↓↓ ДОБАВЛЕНО: РАЗНЫЕ ЦВЕТА МАРКЕРОВ В ЗАВИСИМОСТИ ОТ ПОЖЕЛАНИЯ ↓↓↓
                     calendarBuilders: CalendarBuilders(
                       markerBuilder: (context, date, events) {
                         final type = _wishes[_key(date)];
@@ -240,7 +244,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         );
                       },
                     ),
-                    // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -252,10 +255,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 8),
+                        // ↓↓↓ ВОЗВРАЩЁН ЧИП "ХОЧУ" ↓↓↓
                         Wrap(
                           spacing: 8,
                           children: [
-                            // ↓↓↓ УБРАНА КНОПКА "ХОЧУ" ↓↓↓
+                            ChoiceChip(
+                              label: const Text('Хочу'),
+                              selected: selectedWish == 'want',
+                              onSelected: (_) => _setWish('want'),
+                            ),
                             ChoiceChip(
                               label: const Text('Могу'),
                               selected: selectedWish == 'can',
@@ -268,6 +276,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                           ],
                         ),
+                        // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
                       ],
                     ),
                   ),
