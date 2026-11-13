@@ -341,11 +341,13 @@ def get_courses(user_id: int):
         cur.close()
         conn.close()
 
+
 class PeriodData(BaseModel):
     title: str
     start_date: date
     end_date: date
     created_by: int
+
 
 @app.post("/periods")
 def create_period(data: PeriodData):
@@ -370,12 +372,14 @@ def create_period(data: PeriodData):
         cur.close()
         conn.close()
 
+
 def _period_status(cur, period_id: int) -> str | None:
     cur.execute("SELECT status FROM schedule_periods WHERE id = %s", (period_id,))
     row = cur.fetchone()
     if row is None:
         return None
     return row["status"] if isinstance(row, dict) else row[0]
+
 
 class WishData(BaseModel):
     period_id: int
@@ -422,9 +426,6 @@ def get_current_period():
         conn.close()
 
 
-# ============================================
-# ДОБАВЛЕНА ФУНКЦИЯ АВТОСОЗДАНИЯ ПЕРИОДА
-# ============================================
 def _ensure_open_period(cur):
     cur.execute(
         """
@@ -461,9 +462,7 @@ def save_wish(data: WishData):
     conn = get_connection()
     cur = conn.cursor()
     try:
-        # ↓↓↓ ИЗМЕНЕНО: период создается/берется автоматически ↓↓↓
         period_id = _ensure_open_period(cur)
-        # ↑↑↑ КОНЕЦ ИЗМЕНЕНИЯ ↑↑↑
 
         cur.execute(
             """
@@ -479,6 +478,7 @@ def save_wish(data: WishData):
     finally:
         cur.close()
         conn.close()
+
 
 @app.get("/wishes")
 def get_wishes(period_id: int, user_id: int | None = None):
@@ -532,6 +532,7 @@ def get_wishes(period_id: int, user_id: int | None = None):
     finally:
         cur.close()
         conn.close()
+
 
 class DraftShiftData(BaseModel):
     period_id: int
@@ -746,31 +747,11 @@ def publish_period(period_id: int):
         cur.close()
         conn.close()
 
+
 class ProgressData(BaseModel):
     user_id: int
     lessons_done: int
 
-@app.post("/courses/{course_id}/progress")
-def save_progress(course_id: int, data: ProgressData):
-    conn = get_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            """
-            INSERT INTO course_progress (user_id, course_id, lessons_done)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (user_id, course_id)
-            DO UPDATE SET lessons_done = EXCLUDED.lessons_done
-            """,
-            (data.user_id, course_id, data.lessons_done),
-        )
-        conn.commit()
-        return {"ok": True}
-    finally:
-        cur.close()
-        conn.close()
-
-# ... (весь предыдущий код main.py до save_progress включительно)
 
 @app.post("/courses/{course_id}/progress")
 def save_progress(course_id: int, data: ProgressData):
@@ -794,23 +775,68 @@ def save_progress(course_id: int, data: ProgressData):
 
 
 # ============================================
-# ТЕСТЫ (для обучения)
+# ОБУЧЕНИЕ: РАЗДЕЛЫ И ТЕСТЫ
 # ============================================
+
+class SectionData(BaseModel):
+    title: str
+    role: str
+
+
+@app.get("/sections")
+def get_sections(role: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, title, role FROM learning_sections WHERE role = %s ORDER BY id",
+            (role,),
+        )
+        rows = cur.fetchall()
+        return {
+            "sections": [
+                row if isinstance(row, dict) else {"id": row[0], "title": row[1], "role": row[2]}
+                for row in rows
+            ]
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/sections")
+def create_section(data: SectionData):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO learning_sections (title, role) VALUES (%s, %s) RETURNING id",
+            (data.title, data.role),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return {"id": row["id"] if isinstance(row, dict) else row[0]}
+    finally:
+        cur.close()
+        conn.close()
+
 
 @app.get("/tests")
-def get_tests(role: str):
+def get_tests(section_id: int):
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, title, role FROM tests WHERE role = %s ORDER BY id", (role,))
+        cur.execute(
+            "SELECT id, title FROM tests WHERE section_id = %s ORDER BY id",
+            (section_id,),
+        )
         rows = cur.fetchall()
-        items = []
-        for row in rows:
-            if isinstance(row, dict):
-                items.append(row)
-            else:
-                items.append({"id": row[0], "title": row[1], "role": row[2]})
-        return {"tests": items}
+        return {
+            "tests": [
+                row if isinstance(row, dict) else {"id": row[0], "title": row[1]}
+                for row in rows
+            ]
+        }
     finally:
         cur.close()
         conn.close()
@@ -825,7 +851,7 @@ def get_test(test_id: int):
         test = cur.fetchone()
         if test is None:
             raise HTTPException(status_code=404, detail="Тест не найден")
-        
+
         cur.execute(
             "SELECT id, question, options FROM test_questions WHERE test_id = %s ORDER BY id",
             (test_id,),
@@ -833,32 +859,31 @@ def get_test(test_id: int):
         questions = []
         for row in cur.fetchall():
             if isinstance(row, dict):
-                # Предполагаем, что options может прийти как строка с разделителем | или как список
                 opts = row["options"]
                 if isinstance(opts, str):
                     opts = opts.split("|")
                 questions.append({
-                    "id": row["id"], 
-                    "question": row["question"], 
-                    "options": opts
+                    "id": row["id"],
+                    "question": row["question"],
+                    "options": opts,
                 })
             else:
                 opts = row[2]
                 if isinstance(opts, str):
                     opts = opts.split("|")
                 questions.append({
-                    "id": row[0], 
-                    "question": row[1], 
-                    "options": opts
+                    "id": row[0],
+                    "question": row[1],
+                    "options": opts,
                 })
-                
+
         test_id_val = test["id"] if isinstance(test, dict) else test[0]
         test_title = test["title"] if isinstance(test, dict) else test[1]
-        
+
         return {
             "id": test_id_val,
             "title": test_title,
-            "questions": questions
+            "questions": questions,
         }
     finally:
         cur.close()
@@ -870,13 +895,14 @@ def create_test(data: dict):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        # ↓↓↓ ИСПРАВЛЕНО: добавлен section_id ↓↓↓
         cur.execute(
-            "INSERT INTO tests (title, role) VALUES (%s, %s) RETURNING id",
-            (data["title"], data["role"])
+            "INSERT INTO tests (section_id, title, role) VALUES (%s, %s, %s) RETURNING id",
+            (data["section_id"], data["title"], data["role"]),
         )
         created = cur.fetchone()
         test_id = created["id"] if isinstance(created, dict) else created[0]
-        
+
         for q in data["questions"]:
             cur.execute(
                 "INSERT INTO test_questions (test_id, question, options, correct_index) VALUES (%s, %s, %s, %s)",
