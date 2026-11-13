@@ -769,3 +769,121 @@ def save_progress(course_id: int, data: ProgressData):
     finally:
         cur.close()
         conn.close()
+
+# ... (весь предыдущий код main.py до save_progress включительно)
+
+@app.post("/courses/{course_id}/progress")
+def save_progress(course_id: int, data: ProgressData):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO course_progress (user_id, course_id, lessons_done)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id, course_id)
+            DO UPDATE SET lessons_done = EXCLUDED.lessons_done
+            """,
+            (data.user_id, course_id, data.lessons_done),
+        )
+        conn.commit()
+        return {"ok": True}
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ============================================
+# ТЕСТЫ (для обучения)
+# ============================================
+
+@app.get("/tests")
+def get_tests(role: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, title, role FROM tests WHERE role = %s ORDER BY id", (role,))
+        rows = cur.fetchall()
+        items = []
+        for row in rows:
+            if isinstance(row, dict):
+                items.append(row)
+            else:
+                items.append({"id": row[0], "title": row[1], "role": row[2]})
+        return {"tests": items}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/tests/{test_id}")
+def get_test(test_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, title FROM tests WHERE id = %s", (test_id,))
+        test = cur.fetchone()
+        if test is None:
+            raise HTTPException(status_code=404, detail="Тест не найден")
+        
+        cur.execute(
+            "SELECT id, question, options FROM test_questions WHERE test_id = %s ORDER BY id",
+            (test_id,),
+        )
+        questions = []
+        for row in cur.fetchall():
+            if isinstance(row, dict):
+                # Предполагаем, что options может прийти как строка с разделителем | или как список
+                opts = row["options"]
+                if isinstance(opts, str):
+                    opts = opts.split("|")
+                questions.append({
+                    "id": row["id"], 
+                    "question": row["question"], 
+                    "options": opts
+                })
+            else:
+                opts = row[2]
+                if isinstance(opts, str):
+                    opts = opts.split("|")
+                questions.append({
+                    "id": row[0], 
+                    "question": row[1], 
+                    "options": opts
+                })
+                
+        test_id_val = test["id"] if isinstance(test, dict) else test[0]
+        test_title = test["title"] if isinstance(test, dict) else test[1]
+        
+        return {
+            "id": test_id_val,
+            "title": test_title,
+            "questions": questions
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/tests")
+def create_test(data: dict):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO tests (title, role) VALUES (%s, %s) RETURNING id",
+            (data["title"], data["role"])
+        )
+        created = cur.fetchone()
+        test_id = created["id"] if isinstance(created, dict) else created[0]
+        
+        for q in data["questions"]:
+            cur.execute(
+                "INSERT INTO test_questions (test_id, question, options, correct_index) VALUES (%s, %s, %s, %s)",
+                (test_id, q["question"], "|".join(q["options"]), q["correct_index"]),
+            )
+        conn.commit()
+        return {"ok": True, "id": test_id}
+    finally:
+        cur.close()
+        conn.close()

@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const background = Color(0xFFF7F6F3);
-  static const surface = Color(0xFFFCFBF8);
+  static const background = Color(0xFFF8F4EF);
+  static const surface = Color(0xFFFFFCF9);
   static const surfaceElevated = Color(0xFFFFFFFF);
-  static const text = Color(0xFF1C1C1A);
-  static const textMuted = Color(0xFF6B6A64);
-  static const textHint = Color(0xFF9C9A93);
-  static const line = Color(0xFFE7E5DF);
-  static const accent = Color(0xFF0F766E);
-  static const accentHover = Color(0xFF115E59);
-  static const success = Color(0xFF3F7D5A);
-  static const warning = Color(0xFFA16207);
-  static const error = Color(0xFFB42318);
+  static const text = Color(0xFF2C2420);
+  static const textMuted = Color(0xFF7A716A);
+  static const textHint = Color(0xFFA89F97);
+  static const line = Color(0xFFEDE6DF);
+  static const accent = Color(0xFFE07A6A);
+  static const accentHover = Color(0xFFC96A5C);
+  static const success = Color(0xFF5C8A6E);
+  static const warning = Color(0xFFC4A35A);
+  static const error = Color(0xFFC45C4A);
 
-  // старые имена, чтобы экраны не сломались
   static const coral = accent;
   static const teal = accent;
   static const backgroundWarm = background;

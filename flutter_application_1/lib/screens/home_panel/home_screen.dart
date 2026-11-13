@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/api_config.dart';
 import 'package:flutter_application_1/api/auth_state.dart';
+import 'package:flutter_application_1/theme/app_colors.dart';
 import 'package:flutter_application_1/screens/reglog_panel/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -108,48 +109,58 @@ class _HomeScreenState extends State<HomeScreen> {
     final progress = _lessonsTotal == 0 ? 0.0 : _lessonsDone / _lessonsTotal;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Главная'),
-        // ↓↓↓ ДОБАВЛЕНА КНОПКА ВЫХОДА ↓↓↓
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              AuthState.clear();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (_) => false,
-              );
-            },
-          ),
-        ],
-        // ↑↑↑ КОНЕЦ ДОБАВЛЕНИЯ ↑↑↑
-      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 56, 20, 24),
               children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Контакт Бар',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.logout, size: 20),
+                      onPressed: () {
+                        AuthState.clear();
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (_) => false,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(
                   'Привет, $name',
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                    color: AppColors.text,
+                  ),
                 ),
                 const SizedBox(height: 6),
-                Text('$role · $bar'),
-                const SizedBox(height: 24),
+                Text('$role · $bar', style: const TextStyle(color: AppColors.textMuted)),
+                const SizedBox(height: 28),
                 _Card(
                   title: 'Ближайшая смена',
                   child: _nextShift == null
                       ? const Text('Смен пока нет')
                       : Text(
                           '${_nextShift!['date']}\n${_nextShift!['time']}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                         ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 _Card(
                   title: 'Сегодня в смене',
                   child: _today.isEmpty
@@ -172,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           }).toList(),
                         ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 _Card(
                   title: 'Обучение',
                   child: Column(
@@ -201,8 +212,9 @@ class _Card extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -183,24 +183,31 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               children: [
-                // ↓↓↓ БЛОК С КАРТОЧКАМИ ЗА СЕГОДНЯ ↓↓↓
-                Row(
-                  children: [
-                    Expanded(
-                      child: _TodayCard(
-                        title: 'Чаевые сегодня',
-                        value: '${_todaySum(AchievementType.tips).toStringAsFixed(0)} ₽',
+                // ↓↓↓ БЛОК КАРТОЧЕК ПО РОЛЯМ ↓↓↓
+                if (AuthState.role == 'Официант') ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TodayCard(
+                          title: 'Чаевые сегодня',
+                          value: '${_todaySum(AchievementType.tips).toStringAsFixed(0)} ₽',
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _TodayCard(
-                        title: 'Выручка сегодня',
-                        value: '${_todaySum(AchievementType.revenue).toStringAsFixed(0)} ₽',
-                      ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 12),
+                      const Expanded(child: _TodayCard(title: 'Выручка', value: '—')),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const _TodayCard(title: 'Процент с продаж', value: '—'),
+                ] else if (AuthState.role == 'Бармен') ...[
+                  const _TodayCard(title: 'Выручка бара', value: '—'),
+                  const SizedBox(height: 12),
+                  const _TodayCard(title: 'Твой процент', value: '—'),
+                ] else if (AuthState.role == 'Менеджер' || AuthState.role == 'Управляющий') ...[
+                  const _TodayCard(title: 'Выручка бара', value: '—'),
+                  const SizedBox(height: 12),
+                  const _TodayCard(title: 'План на сегодня', value: 'нет данных'),
+                ],
                 const SizedBox(height: 16),
                 // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
 
@@ -261,18 +268,21 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _addRecord,
-                icon: const Icon(Icons.add, size: 20),
-                label: const Text('Добавить достижение'),
+          // ↓↓↓ НИЖНЯЯ КНОПКА ТОЛЬКО ДЛЯ ОФИЦИАНТА ↓↓↓
+          if (AuthState.role == 'Официант')
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _addRecord,
+                  icon: const Icon(Icons.add, size: 20),
+                  label: const Text('Внести чаевые'),
+                ),
               ),
             ),
-          ),
+          // ↑↑↑ КОНЕЦ КНОПКИ ↑↑↑
         ],
       ),
     );
@@ -423,7 +433,6 @@ class _AddAchievementSheet extends StatefulWidget {
 
 class _AddAchievementSheetState extends State<_AddAchievementSheet> {
   final TextEditingController _valueController = TextEditingController();
-  AchievementType _type = AchievementType.salesPercent;
   String? _error;
 
   @override
@@ -441,15 +450,10 @@ class _AddAchievementSheetState extends State<_AddAchievementSheet> {
       return;
     }
 
-    if (_type == AchievementType.salesPercent && value > 100) {
-      setState(() => _error = 'Процент не может быть больше 100');
-      return;
-    }
-
     Navigator.pop(
       context,
       _UserAchievement(
-        type: _type,
+        type: AchievementType.tips, // Фиксированно: только чаевые
         value: value,
         createdAt: DateTime.now(),
       ),
@@ -459,7 +463,6 @@ class _AddAchievementSheetState extends State<_AddAchievementSheet> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final meta = _AchievementTypeMeta.values[_type]!;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -478,27 +481,8 @@ class _AddAchievementSheetState extends State<_AddAchievementSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('Новое достижение', style: textTheme.titleLarge),
+          Text('Новые чаевые', style: textTheme.titleLarge),
           const SizedBox(height: 16),
-          DropdownButtonFormField<AchievementType>(
-            initialValue: _type,
-            decoration: const InputDecoration(labelText: 'Тип'),
-            items: AchievementType.values.map((type) {
-              final item = _AchievementTypeMeta.values[type]!;
-              return DropdownMenuItem(
-                value: type,
-                child: Text(item.label),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                _type = value;
-                _error = null;
-              });
-            },
-          ),
-          const SizedBox(height: 12),
           TextField(
             controller: _valueController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -506,8 +490,8 @@ class _AddAchievementSheetState extends State<_AddAchievementSheet> {
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
             ],
             decoration: InputDecoration(
-              labelText: 'Значение',
-              suffixText: meta.unit,
+              labelText: 'Сумма чаевых',
+              suffixText: '₽',
               errorText: _error,
             ),
             onChanged: (_) {
