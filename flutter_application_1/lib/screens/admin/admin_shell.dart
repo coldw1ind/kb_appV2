@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'schedule_grid_screen.dart';
-
+import 'tests_admin_screen.dart';
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
 
@@ -15,7 +15,7 @@ class _AdminShellState extends State<AdminShell> {
   Widget build(BuildContext context) {
     final pages = const [
       ScheduleGridScreen(),
-      Center(child: Text('Курсы — скоро')),
+      TestsAdminScreen(),
       Center(child: Text('Сотрудники — скоро')),
     ];
 
