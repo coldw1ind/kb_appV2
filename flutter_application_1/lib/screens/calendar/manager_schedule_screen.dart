@@ -119,7 +119,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     if (ok) await _load();
   }
 
-  // ↓↓↓ ОБНОВЛЕНО: добавлено отображение ошибки ↓↓↓
   Future<void> _publish() async {
     final id = _period!['id'];
     final response = await http.post(
@@ -132,17 +131,87 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     );
     if (ok) await _load();
   }
-  // ↑↑↑ КОНЕЦ ИЗМЕНЕНИЯ ↑↑↑
+
+  // Нижняя шторка со списком людей на день
+  void _openDay(String dayStr) {
+    final items = _wishes.where((w) => w['wish_date'].toString() == dayStr).toList();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                dayStr,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 16),
+              if (items.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Text('Никто не отметился'),
+                )
+              else
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: items.map((wish) {
+                      final off = wish['wish_type'] == 'off';
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(wish['username'].toString()),
+                        subtitle: Text(_wishLabel(wish['wish_type'].toString())),
+                        trailing: off
+                            ? const Text('—')
+                            : TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(context); // Закрываем шторку
+                                  await _addDraft(wish); // Добавляем и перезагружаем
+                                },
+                                child: const Text('В смену'),
+                              ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final grouped = <String, List<Map<String, dynamic>>>{};
+    // Считаем количество пожеланий на каждый день
+    final counts = <String, int>{};
     for (final wish in _wishes) {
       final day = wish['wish_date'].toString();
-      grouped.putIfAbsent(day, () => []);
-      grouped[day]!.add(wish);
+      counts[day] = (counts[day] ?? 0) + 1;
     }
-    final days = grouped.keys.toList()..sort();
+    
+    final days = counts.keys.toList()..sort();
 
     return Scaffold(
       appBar: AppBar(
@@ -185,46 +254,54 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                             ],
                           ),
                         ),
+                        // ↓↓↓ ЗАМЕНЕНО: СЕТКА ДНЕЙ ВМЕСТО СПИСКА ↓↓↓
                         Expanded(
-                          child: ListView(
-                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                            children: days.map((day) {
-                              final items = grouped[day]!;
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      day,
-                                      style: const TextStyle(fontWeight: FontWeight.w700),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...items.map((wish) {
-                                      final off = wish['wish_type'] == 'off';
-                                      return ListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        title: Text(wish['username'].toString()),
-                                        subtitle: Text(_wishLabel(wish['wish_type'].toString())),
-                                        trailing: off
-                                            ? const Text('—')
-                                            : TextButton(
-                                                onPressed: () => _addDraft(wish),
-                                                child: const Text('В смену'),
+                          child: days.isEmpty
+                              ? const Center(child: Text('Пожеланий пока нет'))
+                              : GridView.builder(
+                                  padding: const EdgeInsets.all(20),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 7,
+                                    mainAxisSpacing: 8,
+                                    crossAxisSpacing: 8,
+                                    childAspectRatio: 1.1,
+                                  ),
+                                  itemCount: days.length,
+                                  itemBuilder: (context, index) {
+                                    final dayStr = days[index];
+                                    // Парсим дату для отображения только числа
+                                    final parts = dayStr.split('-');
+                                    final dayNumber = int.tryParse(parts.last) ?? 0;
+
+                                    return InkWell(
+                                      onTap: () => _openDay(dayStr),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              '$dayNumber',
+                                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                                            ),
+                                            if ((counts[dayStr] ?? 0) > 0)
+                                              Text(
+                                                '${counts[dayStr]}',
+                                                style: const TextStyle(fontSize: 11, color: Colors.grey),
                                               ),
-                                      );
-                                    }),
-                                  ],
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            }).toList(),
-                          ),
                         ),
+                        // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                           child: Column(

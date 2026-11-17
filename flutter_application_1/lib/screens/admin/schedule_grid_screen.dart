@@ -241,100 +241,108 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
     );
   }
 
+  // ↓↓↓ ЗАМЕНЕНО НА СЕТКУ МЕСЯЦА ↓↓↓
   Widget _buildDateList() {
     final days = _days();
-    
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: days.length,
-      itemBuilder: (context, index) {
-        final day = days[index];
-        final dateStr = _dateKey(day);
-        
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          clipBehavior: Clip.antiAlias,
-          child: ExpansionTile(
-            title: Text(
-              _formatDateHuman(day),
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-            ),
-            subtitle: Text(
-              '${_employees.where((e) => _wishFor(e['id'] as int, dateStr) != null).length} пожеланий',
-              style: const TextStyle(fontSize: 13),
-            ),
-            children: _employees.map((emp) {
-              final userId = emp['id'] as int;
-              final username = emp['username'].toString();
-              final wish = _wishFor(userId, dateStr);
-              final draft = _draftFor(userId, dateStr);
+    if (days.isEmpty) return const SizedBox.shrink();
+    final first = days.first;
+    final startWeekday = first.weekday;
+    final leading = startWeekday - 1;
 
-              return _buildEmployeeTile(userId, username, dateStr, wish, draft);
-            }).toList(),
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: leading + days.length,
+      itemBuilder: (context, index) {
+        if (index < leading) return const SizedBox.shrink();
+        final day = days[index - leading];
+        final date = _dateKey(day);
+        final count = _wishes.where((w) => w['wish_date'].toString().startsWith(date)).length;
+        return InkWell(
+          onTap: () => _openDay(day, date),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('${day.day}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                if (count > 0)
+                  Text('$count', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildEmployeeTile(
-    int userId, 
-    String username, 
-    String date, 
-    Map<String, dynamic>? wish, 
-    Map<String, dynamic>? draft
-  ) {
-    final wishType = wish?['wish_type'];
-    
-    // Определяем цвет и текст для пожелания (только Может / Не может)
-    Color wishColor = Colors.grey;
-    String wishText = 'Нет пожеланий';
-    
-    if (wishType == 'can') {
-      wishColor = Colors.green; // Зеленый, как в календаре
-      wishText = 'Может';
-    } else if (wishType == 'off') {
-      wishColor = Colors.red;
-      wishText = 'Не может';
-    }
+  void _openDay(DateTime day, String date) {
+    // Берем всех сотрудников и проверяем, есть ли у них пожелание на этот день
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(_formatDateHuman(day)),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: _employees.map((emp) {
+              final userId = emp['id'] as int;
+              final username = emp['username'].toString();
+              final wish = _wishFor(userId, date);
+              final draft = _draftFor(userId, date);
+              final wishType = wish?['wish_type'];
 
-    final canEdit = _period!['status'] == 'manager_review' || _period!['status'] == 'director_review';
+              Color wishColor = Colors.grey;
+              String wishText = 'Нет пожеланий';
+              if (wishType == 'want') { wishColor = Colors.orange; wishText = 'Хочет'; }
+              else if (wishType == 'can') { wishColor = Colors.green; wishText = 'Может'; }
+              else if (wishType == 'off') { wishColor = Colors.red; wishText = 'Не может'; }
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      title: Text(username),
-      subtitle: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: wishColor, shape: BoxShape.circle),
+              final canEdit = _period!['status'] == 'manager_review' || _period!['status'] == 'director_review';
+
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(username),
+                subtitle: Row(
+                  children: [
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: wishColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Text(wishText, style: TextStyle(color: wishColor, fontSize: 13)),
+                  ],
+                ),
+                trailing: draft != null 
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: const Color(0xFFD1FAE5), borderRadius: BorderRadius.circular(8)),
+                        child: Text('${draft['time']}', style: const TextStyle(color: Color(0xFF047857), fontSize: 12)),
+                      )
+                    : (canEdit && wishType != 'off' 
+                        ? TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Закрываем диалог
+                              _editCell(userId, username, date);
+                            },
+                            child: const Text('В смену'),
+                          )
+                        : const SizedBox.shrink()),
+              );
+            }).toList(),
           ),
-          const SizedBox(width: 6),
-          Text(wishText, style: TextStyle(color: wishColor, fontSize: 13, fontWeight: FontWeight.w500)),
-        ],
+        ),
       ),
-      trailing: draft != null 
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD1FAE5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${draft['time']}',
-                style: const TextStyle(color: Color(0xFF047857), fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            )
-          : (canEdit && wishType != 'off' 
-              ? TextButton(
-                  onPressed: () => _editCell(userId, username, date),
-                  child: const Text('В смену'),
-                )
-              : const SizedBox.shrink()),
     );
   }
+  // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
 
   Widget _buildBottomButtons() {
     return Padding(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'schedule_grid_screen.dart';
 import 'tests_admin_screen.dart';
+import 'employees_admin_screen.dart';
+
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
 
@@ -16,7 +18,7 @@ class _AdminShellState extends State<AdminShell> {
     final pages = const [
       ScheduleGridScreen(),
       TestsAdminScreen(),
-      Center(child: Text('Сотрудники — скоро')),
+      EmployeesAdminScreen(),
     ];
 
     return Scaffold(
@@ -24,9 +26,7 @@ class _AdminShellState extends State<AdminShell> {
         children: [
           NavigationRail(
             selectedIndex: _index,
-            onDestinationSelected: (value) {
-              setState(() => _index = value);
-            },
+            onDestinationSelected: (value) => setState(() => _index = value),
             labelType: NavigationRailLabelType.all,
             destinations: const [
               NavigationRailDestination(

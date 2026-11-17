@@ -2,14 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/auth_state.dart';
-import 'package:flutter_application_1/screens/learning_panel/course_screen.dart';
-
-const _bg = Color(0xFFFFF7F2);
-const _ink = Color(0xFF1C1917);
-const _muted = Color(0xFF78716C);
-const _accent = Color(0xFFE85D4C);
-const _soft = Color(0xFFFFF0EC);
-const _navy = Color(0xFF2B2A4A);
 
 class LearningScreen extends StatefulWidget {
   const LearningScreen({super.key});
@@ -19,13 +11,8 @@ class LearningScreen extends StatefulWidget {
 }
 
 class _LearningScreenState extends State<LearningScreen> {
-  static const _baseUrl = 'http://127.0.0.1:8000';
-
-  /// Актуальный id пользователя из глобального состояния.
-  int? get _userId => AuthState.id;
-
   bool _loading = true;
-  List<Map<String, dynamic>> _courses = [];
+  List<Map<String, dynamic>> _sections = [];
 
   @override
   void initState() {
@@ -34,211 +21,52 @@ class _LearningScreenState extends State<LearningScreen> {
   }
 
   Future<void> _load() async {
-    final userId = _userId;
-    if (userId == null) {
+    final role = AuthState.role;
+    if (role.isEmpty) {
       setState(() => _loading = false);
       return;
     }
-
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/courses?user_id=$userId'),
-      );
-      if (response.statusCode != 200) {
-        if (!mounted) return;
-        setState(() => _loading = false);
-        return;
-      }
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      final rows = (body['courses'] ?? []) as List<dynamic>;
-
-      if (!mounted) return;
+      final res = await http.get(Uri.parse('http://127.0.0.1:8000/sections?role=$role'));
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
       setState(() {
-        _courses = rows.cast<Map<String, dynamic>>();
+        _sections = ((body['sections'] ?? []) as List).cast<Map<String, dynamic>>();
         _loading = false;
       });
-    } catch (e) {
-      print('COURSES ERROR: $e');
-      if (!mounted) return;
+    } catch (_) {
       setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final started = _courses.where((c) => (c['lessons_done'] as num) > 0).length;
-    final totalCourses = _courses.length;
-    final progress = totalCourses == 0 ? 0.0 : started / totalCourses;
-
-    Map<String, dynamic>? continueCourse;
-    for (final course in _courses) {
-      final done = (course['lessons_done'] as num).toInt();
-      final total = (course['lessons_total'] as num).toInt();
-      if (done > 0 && done < total) {
-        continueCourse = course;
-        break;
-      }
-    }
-
-    final categories = _courses
-        .map((c) => c['category'].toString())
-        .toSet()
-        .toList();
-
     return Scaffold(
-      backgroundColor: _bg,
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 children: [
-                  const Text(
-                    'Обучение',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: _ink,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Развивай навыки вместе с Контакт Бар',
-                    style: TextStyle(color: _muted),
-                  ),
-                  const SizedBox(height: 18),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: _navy,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Ваш прогресс',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        ClipRRect(
-                          borderRadius: const BorderRadius.all(Radius.circular(99)),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 10,
-                            backgroundColor: Colors.white24,
-                            color: _accent,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '${(progress * 100).round()}%  •  $started из $totalCourses курсов',
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const Text('Обучение', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 16),
-                  SizedBox(
-                    height: 92,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: categories
-                          .map((title) => _Cat('•', title))
-                          .toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (continueCourse != null)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _soft,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Продолжить обучение', style: TextStyle(color: _muted)),
-                          const SizedBox(height: 6),
-                          Text(
-                            continueCourse['title'].toString(),
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Урок ${continueCourse['lessons_done']} из ${continueCourse['lessons_total']}',
-                            style: const TextStyle(color: _muted),
-                          ),
-                          const SizedBox(height: 12),
-                          FilledButton(
-                            onPressed: () {},
-                            style: FilledButton.styleFrom(backgroundColor: _accent),
-                            child: const Text('Продолжить'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  ..._courses.map((c) {
-                    final done = (c['lessons_done'] as num).toInt();
-                    final total = (c['lessons_total'] as num).toInt();
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CourseScreen(
-                              courseId: c['id'] as int,
-                              title: c['title'].toString(),
-                              total: total,
-                              done: done,
-                            ),
-                          ),
-                        ).then((_) => _load());
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              c['title'].toString(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
+                  if (_sections.isEmpty)
+                    const Text('Пока нет разделов')
+                  else
+                    ..._sections.map((s) => ListTile(
+                          title: Text(s['title'].toString()),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _SectionScreen(
+                                  sectionId: s['id'] as int,
+                                  title: s['title'].toString(),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '$done из $total уроков',
-                              style: const TextStyle(color: _muted, fontSize: 12),
-                            ),
-                            const SizedBox(height: 10),
-                            LinearProgressIndicator(
-                              value: total == 0 ? 0 : done / total,
-                              minHeight: 8,
-                              backgroundColor: const Color(0xFFE7E0DA),
-                              color: _accent,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
+                            );
+                          },
+                        )),
                 ],
               ),
       ),
@@ -246,29 +74,41 @@ class _LearningScreenState extends State<LearningScreen> {
   }
 }
 
-class _Cat extends StatelessWidget {
-  const _Cat(this.emoji, this.title);
-  final String emoji;
+class _SectionScreen extends StatefulWidget {
+  final int sectionId;
   final String title;
+  const _SectionScreen({required this.sectionId, required this.title});
+
+  @override
+  State<_SectionScreen> createState() => _SectionScreenState();
+}
+
+class _SectionScreenState extends State<_SectionScreen> {
+  List<Map<String, dynamic>> _tests = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final res = await http.get(Uri.parse('http://127.0.0.1:8000/tests?section_id=${widget.sectionId}'));
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    setState(() => _tests = ((body['tests'] ?? []) as List).cast<Map<String, dynamic>>());
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const Spacer(),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        ],
-      ),
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: _tests.isEmpty
+          ? const Center(child: Text('В разделе пока нет тестов'))
+          : ListView(
+              children: _tests
+                  .map((t) => ListTile(title: Text(t['title'].toString())))
+                  .toList(),
+            ),
     );
   }
 }

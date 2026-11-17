@@ -29,32 +29,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onTap: (index) => setState(() => _currentIndex = index),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 22),
-            label: 'Главная',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book, size: 22),
-            label: 'Обучение',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.star, size: 22),
-            label: 'Достижения',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today, size: 22),
-            label: 'График',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people, size: 22),
-            label: 'Команда',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home, size: 22), label: 'Главная'),
+          BottomNavigationBarItem(icon: Icon(Icons.menu_book, size: 22), label: 'Обучение'),
+          BottomNavigationBarItem(icon: Icon(Icons.star, size: 22), label: 'Достижения'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today, size: 22), label: 'График'),
+          BottomNavigationBarItem(icon: Icon(Icons.people, size: 22), label: 'Команда'),
         ],
       ),
     );

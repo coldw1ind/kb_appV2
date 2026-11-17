@@ -146,7 +146,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // ↓↓↓ ОБНОВЛЕНО: добавлен 'want' ↓↓↓
   String _wishLabel(String? type) {
     switch (type) {
       case 'want':
@@ -160,7 +159,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  // ↓↓↓ ОБНОВЛЕНО: добавлен 'want' ↓↓↓
   Color? _wishColor(String? type) {
     switch (type) {
       case 'want':
@@ -245,41 +243,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       },
                     ),
                   ),
+                  // ↓↓↓ ЗАМЕНЕНО: ОДНА КНОПКА ВМЕСТО ЧИПОВ ↓↓↓
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${_key(_selectedDate)} · ${_wishLabel(selectedWish)}',
+                          '${_key(_selectedDate)} · ${selectedWish == 'want' ? 'Смена взята' : 'Свободно'}',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        const SizedBox(height: 8),
-                        // ↓↓↓ ВОЗВРАЩЁН ЧИП "ХОЧУ" ↓↓↓
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            ChoiceChip(
-                              label: const Text('Хочу'),
-                              selected: selectedWish == 'want',
-                              onSelected: (_) => _setWish('want'),
-                            ),
-                            ChoiceChip(
-                              label: const Text('Могу'),
-                              selected: selectedWish == 'can',
-                              onSelected: (_) => _setWish('can'),
-                            ),
-                            ChoiceChip(
-                              label: const Text('Не могу'),
-                              selected: selectedWish == 'off',
-                              onSelected: (_) => _setWish('off'),
-                            ),
-                          ],
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: selectedWish == 'want' ? null : () => _setWish('want'),
+                            child: Text(selectedWish == 'want' ? 'Смена взята' : 'Взять смену'),
+                          ),
                         ),
-                        // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
                       ],
                     ),
                   ),
+                  // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.all(24),
