@@ -17,7 +17,7 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
   String? _error;
   Map<String, dynamic>? _period;
   
-  List<Map<String, dynamic>> _employees = []; // Все сотрудники бара
+  List<Map<String, dynamic>> _employees = [];
   List<Map<String, dynamic>> _wishes = [];
   List<Map<String, dynamic>> _drafts = [];
 
@@ -34,7 +34,6 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
     });
 
     try {
-      // 1. Загружаем текущий период
       final periodRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/periods/current'));
       final periodBody = jsonDecode(periodRes.body) as Map<String, dynamic>;
       final period = periodBody['period'] as Map<String, dynamic>?;
@@ -49,7 +48,6 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
 
       final id = period['id'];
 
-      // 2. Загружаем сотрудников (только своего бара)
       final empRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/employees'));
       final empBody = jsonDecode(empRes.body) as Map<String, dynamic>;
       final allEmps = (empBody['employees'] ?? []) as List;
@@ -60,7 +58,6 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
           .where((e) => myBar.isEmpty || (e['bar'] ?? '').toString() == myBar)
           .toList();
 
-      // 3. Загружаем пожелания и черновики
       final wishesRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/wishes?period_id=$id'));
       final draftsRes = await http.get(Uri.parse('${ApiConfig.baseUrl}/draft-shifts?period_id=$id'));
 
@@ -120,7 +117,7 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
 
   Future<void> _editCell(int userId, String username, String date) async {
     final wish = _wishFor(userId, date);
-    if (wish?['wish_type'] == 'off') return; // Нельзя ставить смену, если "Не может"
+    if (wish?['wish_type'] == 'off') return;
 
     final startController = TextEditingController(text: '10:00');
     final endController = TextEditingController(text: '18:00');
@@ -241,52 +238,80 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
     );
   }
 
-  // ↓↓↓ ЗАМЕНЕНО НА СЕТКУ МЕСЯЦА ↓↓↓
+  // ↓↓↓ ЗАМЕНЕНО НА СПИСОК МЕСЯЦЕВ С СЕТКАМИ ДНЕЙ ↓↓↓
   Widget _buildDateList() {
     final days = _days();
     if (days.isEmpty) return const SizedBox.shrink();
-    final first = days.first;
-    final startWeekday = first.weekday;
-    final leading = startWeekday - 1;
 
-    return GridView.builder(
+    final byMonth = <String, List<DateTime>>{};
+    for (final day in days) {
+      final key = '${day.year}-${day.month}';
+      byMonth.putIfAbsent(key, () => []).add(day);
+    }
+
+    const weekdays = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+    const months = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+    return ListView(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: leading + days.length,
-      itemBuilder: (context, index) {
-        if (index < leading) return const SizedBox.shrink();
-        final day = days[index - leading];
-        final date = _dateKey(day);
-        final count = _wishes.where((w) => w['wish_date'].toString().startsWith(date)).length;
-        return InkWell(
-          onTap: () => _openDay(day, date),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+      children: byMonth.entries.map((entry) {
+        final monthDays = entry.value;
+        final first = monthDays.first;
+        final leading = first.weekday - 1;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+              child: Text(
+                '${months[first.month]} ${first.year}',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
             ),
-            alignment: Alignment.center,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('${day.day}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                if (count > 0)
-                  Text('$count', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              ],
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.9,
+              ),
+              itemCount: leading + monthDays.length,
+              itemBuilder: (context, index) {
+                if (index < leading) return const SizedBox.shrink();
+                final day = monthDays[index - leading];
+                final date = _dateKey(day);
+                final count = _wishes.where((w) => w['wish_date'].toString().startsWith(date)).length;
+                return InkWell(
+                  onTap: () => _openDay(day, date),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(weekdays[day.weekday], style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Spacer(),
+                        Text('${day.day}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        Text(count == 0 ? 'пусто' : '$count чел.', style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ),
+          ],
         );
-      },
+      }).toList(),
     );
   }
 
+  // _openDay оставлен без изменений
   void _openDay(DateTime day, String date) {
-    // Берем всех сотрудников и проверяем, есть ли у них пожелание на этот день
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -329,7 +354,7 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
                     : (canEdit && wishType != 'off' 
                         ? TextButton(
                             onPressed: () {
-                              Navigator.pop(context); // Закрываем диалог
+                              Navigator.pop(context);
                               _editCell(userId, username, date);
                             },
                             child: const Text('В смену'),
@@ -342,7 +367,6 @@ class _ScheduleGridScreenState extends State<ScheduleGridScreen> {
       ),
     );
   }
-  // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
 
   Widget _buildBottomButtons() {
     return Padding(

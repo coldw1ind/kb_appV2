@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/auth_state.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
 // ============================================
 // ENUM ТИПОВ ДОСТИЖЕНИЙ
 // ============================================
@@ -29,7 +28,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
   final List<_UserAchievement> _records = [];
 
-  /// Актуальный id пользователя из глобального состояния.
   int? get _userId => AuthState.id;
 
   @override
@@ -38,9 +36,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     _loadRecords();
   }
 
-  // ============================================
-  // ПОДСЧЁТ СУММЫ ЗА СЕГОДНЯ
-  // ============================================
   double _todaySum(AchievementType type) {
     final now = DateTime.now();
     return _records
@@ -52,9 +47,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         .fold(0.0, (sum, r) => sum + r.value);
   }
 
-  // ============================================
-  // ПРЕОБРАЗОВАНИЕ API-СТРОКИ В ENUM
-  // ============================================
   AchievementType? _typeFromApi(String raw) {
     for (final entry in _AchievementTypeMeta.values.entries) {
       if (entry.value.apiName == raw) return entry.key;
@@ -67,9 +59,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  // ============================================
-  // ЗАГРУЗКА ЗАПИСЕЙ С СЕРВЕРА
-  // ============================================
   Future<void> _loadRecords() async {
     final userId = _userId;
     if (userId == null) return;
@@ -109,9 +98,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     }
   }
 
-  // ============================================
-  // ДОБАВЛЕНИЕ ЗАПИСИ (с отправкой на сервер)
-  // ============================================
   Future<void> _addRecord() async {
     final userId = _userId;
     if (userId == null) return;
@@ -152,9 +138,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     }
   }
 
-  // ============================================
-  // УДАЛЕНИЕ ЗАПИСИ (с сервера)
-  // ============================================
   Future<void> _removeRecord(int index) async {
     final record = _records[index];
     if (record.id != null) {
@@ -174,8 +157,11 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF7F2),
       appBar: AppBar(
         title: const Text('Достижения'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: Column(
         children: [
@@ -183,7 +169,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               children: [
-                // ↓↓↓ БЛОК КАРТОЧЕК ПО РОЛЯМ ↓↓↓
                 if (AuthState.role == 'Официант') ...[
                   Row(
                     children: [
@@ -209,9 +194,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                   const _TodayCard(title: 'План на сегодня', value: 'нет данных'),
                 ],
                 const SizedBox(height: 16),
-                // ↑↑↑ КОНЕЦ БЛОКА ↑↑↑
 
-                // ↓↓↓ ДОБАВЛЕННЫЙ БЛОК С KLEEK ДЛЯ ОФИЦИАНТА ↓↓↓
                 if (AuthState.role == 'Официант') ...[
                   SizedBox(
                     width: double.infinity,
@@ -224,7 +207,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                // ↑↑↑ КОНЕЦ ДОБАВЛЕННОГО БЛОКА ↑↑↑
 
                 Text('Мои записи', style: textTheme.titleLarge),
                 const SizedBox(height: 4),
@@ -236,7 +218,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                 if (_records.isEmpty)
                   AppCard(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
-                    radius: AppRadius.xl,
+                    radius: 24, // AppRadius.xl обычно 24, но чтобы не зависеть от импорта — ставим число
                     child: Column(
                       children: [
                         Icon(
@@ -268,7 +250,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               ],
             ),
           ),
-          // ↓↓↓ НИЖНЯЯ КНОПКА ТОЛЬКО ДЛЯ ОФИЦИАНТА ↓↓↓
           if (AuthState.role == 'Официант')
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -282,7 +263,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                 ),
               ),
             ),
-          // ↑↑↑ КОНЕЦ КНОПКИ ↑↑↑
         ],
       ),
     );
@@ -377,7 +357,7 @@ class _RecordCard extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               color: meta.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(meta.icon, color: meta.color, size: 22),
           ),
@@ -453,7 +433,7 @@ class _AddAchievementSheetState extends State<_AddAchievementSheet> {
     Navigator.pop(
       context,
       _UserAchievement(
-        type: AchievementType.tips, // Фиксированно: только чаевые
+        type: AchievementType.tips,
         value: value,
         createdAt: DateTime.now(),
       ),

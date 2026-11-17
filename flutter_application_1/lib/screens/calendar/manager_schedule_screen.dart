@@ -132,7 +132,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     if (ok) await _load();
   }
 
-  // Нижняя шторка со списком людей на день
   void _openDay(String dayStr) {
     final items = _wishes.where((w) => w['wish_date'].toString() == dayStr).toList();
     
@@ -186,8 +185,8 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                             ? const Text('—')
                             : TextButton(
                                 onPressed: () async {
-                                  Navigator.pop(context); // Закрываем шторку
-                                  await _addDraft(wish); // Добавляем и перезагружаем
+                                  Navigator.pop(context);
+                                  await _addDraft(wish);
                                 },
                                 child: const Text('В смену'),
                               ),
@@ -202,9 +201,72 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     );
   }
 
+  // ↓↓↓ ДОБАВЛЕН МЕТОД ДЛЯ ОТРИСОВКИ СЕТКИ ПО МЕСЯЦАМ ↓↓↓
+  Widget _monthGrid(List<String> days, Map<String, int> counts) {
+    const weekdays = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+    const months = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+    final parsed = days.map(DateTime.parse).toList()..sort();
+    final byMonth = <String, List<DateTime>>{};
+    for (final day in parsed) {
+      byMonth.putIfAbsent('${day.year}-${day.month}', () => []).add(day);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: byMonth.entries.map((entry) {
+        final monthDays = entry.value;
+        final first = monthDays.first;
+        final leading = first.weekday - 1;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+              child: Text('${months[first.month]} ${first.year}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            ),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisSpacing: 6,
+                crossAxisSpacing: 6,
+                childAspectRatio: 0.75,
+              ),
+              itemCount: leading + monthDays.length,
+              itemBuilder: (context, index) {
+                if (index < leading) return const SizedBox.shrink();
+                final day = monthDays[index - leading];
+                final key = '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+                final count = counts[key] ?? 0;
+                return InkWell(
+                  onTap: () => _openDay(key),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(weekdays[day.weekday], style: const TextStyle(fontSize: 10, color: Color(0xFF7A716A))),
+                        const Spacer(),
+                        Text('${day.day}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(count == 0 ? '—' : '$count', style: const TextStyle(fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+  // ↑↑↑ КОНЕЦ ДОБАВЛЕННОГО МЕТОДА ↑↑↑
+
   @override
   Widget build(BuildContext context) {
-    // Считаем количество пожеланий на каждый день
     final counts = <String, int>{};
     for (final wish in _wishes) {
       final day = wish['wish_date'].toString();
@@ -254,52 +316,11 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                             ],
                           ),
                         ),
-                        // ↓↓↓ ЗАМЕНЕНО: СЕТКА ДНЕЙ ВМЕСТО СПИСКА ↓↓↓
+                        // ↓↓↓ ЗАМЕНЕНО: ВЫЗОВ _monthGrid ВМЕСТО СТАРОГО GRIDVIEW ↓↓↓
                         Expanded(
                           child: days.isEmpty
                               ? const Center(child: Text('Пожеланий пока нет'))
-                              : GridView.builder(
-                                  padding: const EdgeInsets.all(20),
-                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 7,
-                                    mainAxisSpacing: 8,
-                                    crossAxisSpacing: 8,
-                                    childAspectRatio: 1.1,
-                                  ),
-                                  itemCount: days.length,
-                                  itemBuilder: (context, index) {
-                                    final dayStr = days[index];
-                                    // Парсим дату для отображения только числа
-                                    final parts = dayStr.split('-');
-                                    final dayNumber = int.tryParse(parts.last) ?? 0;
-
-                                    return InkWell(
-                                      onTap: () => _openDay(dayStr),
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              '$dayNumber',
-                                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                                            ),
-                                            if ((counts[dayStr] ?? 0) > 0)
-                                              Text(
-                                                '${counts[dayStr]}',
-                                                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                              : _monthGrid(days, counts),
                         ),
                         // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
                         Padding(

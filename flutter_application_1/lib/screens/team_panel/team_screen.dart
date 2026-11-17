@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_application_1/api/api_config.dart';
 import 'package:flutter_application_1/api/auth_state.dart';
 import 'package:flutter_application_1/screens/team_panel/person_screen.dart';
+import 'package:flutter_application_1/widgets/app_card.dart';
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -71,7 +72,12 @@ class _TeamScreenState extends State<TeamScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Команда')),
+      backgroundColor: const Color(0xFFFFF7F2),
+      appBar: AppBar(
+        title: const Text('Команда'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -115,42 +121,64 @@ class _TeamScreenState extends State<TeamScreen> {
                           : ListView.separated(
                               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                               itemCount: list.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              separatorBuilder: (_, __) => const SizedBox(height: 10),
                               itemBuilder: (context, index) {
                                 final p = list[index];
                                 final name = (p['username'] ?? '').toString();
                                 final role = (p['employee_role'] ?? '').toString();
                                 final id = p['id'];
                                 final isMe = id == AuthState.id;
-                                return ListTile(
-                                  tileColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
+
+                                return AppCard(
+                                  padding: EdgeInsets.zero,
+                                  child: InkWell(
                                     borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  leading: CircleAvatar(
-                                    child: Text(name.isEmpty ? '?' : name[0].toUpperCase()),
-                                  ),
-                                  title: Text(isMe ? '$name (вы)' : name),
-                                  subtitle: Text(role),
-                                  // ↓↓↓ ДОБАВЛЕН onTap ↓↓↓
-                                  onTap: () {
-                                    final rawId = p['id'];
-                                    final id = rawId is int ? rawId : int.tryParse('$rawId');
-                                    if (id == null) return;
-                                    
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => PersonScreen(
-                                          userId: id,
-                                          name: name,
-                                          role: role,
-                                          bar: (p['bar'] ?? AuthState.bar).toString(),
+                                    onTap: () {
+                                      final rawId = p['id'];
+                                      final id = rawId is int ? rawId : int.tryParse('$rawId');
+                                      if (id == null) return;
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => PersonScreen(
+                                            userId: id,
+                                            name: name,
+                                            role: role,
+                                            bar: (p['bar'] ?? AuthState.bar).toString(),
+                                          ),
                                         ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            child: Text(name.isEmpty ? '?' : name[0].toUpperCase()),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  isMe ? '$name (вы)' : name,
+                                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  role,
+                                                  style: const TextStyle(color: Color(0xFF7A716A), fontSize: 13),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Icon(Icons.chevron_right, color: Color(0xFFA89F97)),
+                                        ],
                                       ),
-                                    );
-                                  },
-                                  // ↑↑↑ КОНЕЦ onTap ↑↑↑
+                                    ),
+                                  ),
                                 );
                               },
                             ),

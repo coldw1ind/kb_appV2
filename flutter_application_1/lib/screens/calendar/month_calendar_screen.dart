@@ -146,19 +146,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  String _wishLabel(String? type) {
-    switch (type) {
-      case 'want':
-        return 'Хочу';
-      case 'can':
-        return 'Могу';
-      case 'off':
-        return 'Не могу';
-      default:
-        return 'Не отмечено';
-    }
-  }
-
   Color? _wishColor(String? type) {
     switch (type) {
       case 'want':
@@ -179,7 +166,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final selectedWish = _wishes[_key(_selectedDate)];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('График')),
+      backgroundColor: const Color(0xFFFFF7F2), // Кремовый фон
+      appBar: AppBar(
+        title: const Text('График'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Column(
         children: [
           Padding(
@@ -213,16 +205,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     },
                     headerStyle: const HeaderStyle(formatButtonVisible: false),
                     calendarStyle: CalendarStyle(
-                      markerDecoration: const BoxDecoration(
+                      // Убираем серую заливку у обычных дней
+                      defaultDecoration: const BoxDecoration(),
+                      weekendDecoration: const BoxDecoration(),
+                      outsideDecoration: const BoxDecoration(),
+                      // Выбранный день — коралловый
+                      selectedDecoration: const BoxDecoration(
                         color: AppColors.coral,
                         shape: BoxShape.circle,
                       ),
-                      selectedDecoration: const BoxDecoration(
-                        color: AppColors.teal,
+                      todayDecoration: BoxDecoration(
+                        color: AppColors.coral.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
-                      todayDecoration: BoxDecoration(
-                        color: AppColors.teal.withValues(alpha: 0.25),
+                      markerDecoration: const BoxDecoration(
+                        color: AppColors.coral,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -243,7 +240,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       },
                     ),
                   ),
-                  // ↓↓↓ ЗАМЕНЕНО: ОДНА КНОПКА ВМЕСТО ЧИПОВ ↓↓↓
+                  // ↓↓↓ КНОПКА ВЗЯТЬ СМЕНУ ↓↓↓
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                     child: Column(
@@ -265,7 +262,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ],
                     ),
                   ),
-                  // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
+                  // ↑↑↑ КОНЕЦ КНОПКИ ↑↑↑
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.all(24),
