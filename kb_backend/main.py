@@ -549,8 +549,10 @@ def add_draft_shift(data: DraftShiftData):
     cur = conn.cursor()
     try:
         status = _period_status(cur, data.period_id)
-        if status not in ("manager_review", "director_review"):
-            raise HTTPException(status_code=400, detail="Сейчас нельзя править черновик")
+        # ↓↓↓ ИЗМЕНЕНО: разрешаем редактирование везде, кроме published ↓↓↓
+        if status == "published":
+            raise HTTPException(status_code=400, detail="График уже утверждён")
+        # ↑↑↑ КОНЕЦ ИЗМЕНЕНИЯ ↑↑↑
 
         cur.execute(
             """
@@ -910,6 +912,30 @@ def create_test(data: dict):
             )
         conn.commit()
         return {"ok": True, "id": test_id}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/draft-shifts/{draft_id}")
+def delete_draft(draft_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM draft_shifts WHERE id = %s", (draft_id,))
+        conn.commit()
+        return {"ok": True}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/wishes/{wish_id}")
+def delete_wish(wish_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM shift_wishes WHERE id = %s", (wish_id,))
+        conn.commit()
+        return {"ok": True}
     finally:
         cur.close()
         conn.close()

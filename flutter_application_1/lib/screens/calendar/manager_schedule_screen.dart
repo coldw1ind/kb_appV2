@@ -71,21 +71,12 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     }
   }
 
-  String _wishLabel(String type) {
-    switch (type) {
-      case 'want':
-        return 'Хочет';
-      case 'can':
-        return 'Может';
-      case 'off':
-        return 'Не может';
-      default:
-        return type;
-    }
-  }
-
   Future<void> _addDraft(Map<String, dynamic> wish) async {
-    if (wish['wish_type'] == 'off') return;
+    final times = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (_) => const _TimeDialog(),
+    );
+    if (times == null) return;
 
     final response = await http.post(
       Uri.parse('$_baseUrl/draft-shifts'),
@@ -94,15 +85,22 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
         'period_id': _period!['id'],
         'user_id': wish['user_id'],
         'shift_date': wish['wish_date'],
-        'start_time': '10:00',
-        'end_time': '18:00',
-        'role': 'Официант',
+        'start_time': times['start'],
+        'end_time': times['end'],
+        'role': wish['employee_role'] ?? 'Официант',
       }),
     );
+    if (response.statusCode == 200) await _load();
+  }
 
-    if (response.statusCode == 200) {
-      await _load();
-    }
+  Future<void> _removeDraft(int id) async {
+    await http.delete(Uri.parse('$_baseUrl/draft-shifts/$id'));
+    await _load();
+  }
+
+  Future<void> _removeWish(int id) async {
+    await http.delete(Uri.parse('$_baseUrl/wishes/$id'));
+    await _load();
   }
 
   Future<void> _sendToDirector() async {
@@ -134,74 +132,103 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
 
   void _openDay(String dayStr) {
     final items = _wishes.where((w) => w['wish_date'].toString() == dayStr).toList();
-    
-    showModalBottomSheet(
+    final parsed = DateTime.parse(dayStr);
+    const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final title = '${weekdays[parsed.weekday - 1]}, ${parsed.day} ${months[parsed.month - 1]}';
+
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                dayStr,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 16),
-              if (items.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: Text('Никто не отметился'),
-                )
-              else
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(title),
+          content: SizedBox(
+            width: 320,
+            child: items.isEmpty
+                ? const Text('Никто не отметился')
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: items.map((wish) {
-                      final off = wish['wish_type'] == 'off';
+                      final type = wish['wish_type'].toString();
+                      final color = type == 'want'
+                          ? Colors.orange
+                          : type == 'can'
+                              ? Colors.green
+                              : type == 'off'
+                                  ? Colors.redAccent
+                                  : Colors.grey;
+                      final label = type == 'want'
+                          ? 'Хочет'
+                          : type == 'can'
+                              ? 'Может'
+                              : type == 'off'
+                                  ? 'Не может'
+                                  : 'Нет';
+                      
+                      // Ищем существующий черновик для этого пользователя на этот день
+                      final draft = _drafts.firstWhere(
+                        (d) => d['user_id'] == wish['user_id'] && d['shift_date'].toString().startsWith(dayStr),
+                        orElse: () => <String, dynamic>{},
+                      );
+                      final hasDraft = draft.isNotEmpty; // Проверяем, есть ли данные
+
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(wish['username'].toString()),
-                        subtitle: Text(_wishLabel(wish['wish_type'].toString())),
-                        trailing: off
-                            ? const Text('—')
-                            : TextButton(
+                        subtitle: Row(
+                          children: [
+                            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                            const SizedBox(width: 6),
+                            Text(label, style: TextStyle(color: color, fontSize: 13)),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // ↓↓↓ ИСПОЛЬЗУЕМ hasDraft ВМЕСТО draft != null ↓↓↓
+                            if (hasDraft) ...[
+                              Text(
+                                draft['time'].toString(),
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF047857)),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  await _removeDraft(draft['id'] as int);
+                                },
+                                child: const Text('Убрать'),
+                              ),
+                            ] else if (type != 'off') ...[
+                              TextButton(
                                 onPressed: () async {
                                   Navigator.pop(context);
                                   await _addDraft(wish);
                                 },
                                 child: const Text('В смену'),
                               ),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  await _removeWish(wish['id'] as int);
+                                },
+                                child: const Text('Снять'),
+                              ),
+                            ] else ...[
+                              const Text('—'),
+                            ],
+                          ],
+                        ),
                       );
                     }).toList(),
                   ),
-                ),
-            ],
           ),
         );
       },
     );
   }
 
-  // ↓↓↓ ДОБАВЛЕН МЕТОД ДЛЯ ОТРИСОВКИ СЕТКИ ПО МЕСЯЦАМ ↓↓↓
   Widget _monthGrid(List<String> days, Map<String, int> counts) {
     const weekdays = ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
     const months = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -229,10 +256,10 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 6,
-                crossAxisSpacing: 6,
-                childAspectRatio: 0.75,
+                crossAxisCount: 4,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 0.9,
               ),
               itemCount: leading + monthDays.length,
               itemBuilder: (context, index) {
@@ -242,16 +269,30 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                 final count = counts[key] ?? 0;
                 return InkWell(
                   onTap: () => _openDay(key),
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(weekdays[day.weekday], style: const TextStyle(fontSize: 10, color: Color(0xFF7A716A))),
+                        Text(
+                          weekdays[day.weekday],
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF7A716A)),
+                        ),
                         const Spacer(),
-                        Text('${day.day}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        Text(count == 0 ? '—' : '$count', style: const TextStyle(fontSize: 10)),
+                        Text(
+                          '${day.day}',
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          count == 0 ? 'пусто' : '$count чел.',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF7A716A)),
+                        ),
                       ],
                     ),
                   ),
@@ -263,7 +304,6 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
       }).toList(),
     );
   }
-  // ↑↑↑ КОНЕЦ ДОБАВЛЕННОГО МЕТОДА ↑↑↑
 
   @override
   Widget build(BuildContext context) {
@@ -316,13 +356,11 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
                             ],
                           ),
                         ),
-                        // ↓↓↓ ЗАМЕНЕНО: ВЫЗОВ _monthGrid ВМЕСТО СТАРОГО GRIDVIEW ↓↓↓
                         Expanded(
                           child: days.isEmpty
                               ? const Center(child: Text('Пожеланий пока нет'))
                               : _monthGrid(days, counts),
                         ),
-                        // ↑↑↑ КОНЕЦ ЗАМЕНЫ ↑↑↑
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                           child: Column(
@@ -354,3 +392,49 @@ class _ManagerScheduleScreenState extends State<ManagerScheduleScreen> {
     );
   }
 }
+
+// ↓↓↓ ДИАЛОГ ДЛЯ ВВОДА ВРЕМЕНИ ↓↓↓
+class _TimeDialog extends StatefulWidget {
+  const _TimeDialog();
+
+  @override
+  State<_TimeDialog> createState() => _TimeDialogState();
+}
+
+class _TimeDialogState extends State<_TimeDialog> {
+  final _start = TextEditingController(text: '10:00');
+  final _end = TextEditingController(text: '18:00');
+
+  @override
+  void dispose() {
+    _start.dispose();
+    _end.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Время смены'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: _start, decoration: const InputDecoration(labelText: 'Начало')),
+          const SizedBox(height: 12),
+          TextField(controller: _end, decoration: const InputDecoration(labelText: 'Конец')),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, {
+            'start': _start.text.trim(),
+            'end': _end.text.trim(),
+          }),
+          child: const Text('Поставить'),
+        ),
+      ],
+    );
+  }
+}
+// ↑↑↑ КОНЕЦ ДИАЛОГА ↑↑↑
